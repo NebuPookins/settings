@@ -13,5 +13,5 @@ export SVN_EDITOR=nano
 
 # Sets svn diff to emit color, and automatically page
 svn() {
-	/usr/bin/svn "${@}" | colordiff | less -R
+	/usr/bin/svn "${@}" | colordiff
 }
