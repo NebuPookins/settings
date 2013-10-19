@@ -1,0 +1,26 @@
+Config { font = "-misc-fixed-*-*-*-*-10-*-*-*-*-*-*-*"
+       , bgColor = "black"
+       , fgColor = "grey"
+       , position = Top
+       , lowerOnStart = True
+       , commands = [ Run Weather "CYUL" ["-t","Montreal: <tempC>C, rh <rh>% <skyCondition>","-L","18","-H","25","--normal","green","--high","red","--low","lightblue"] 36000
+                    , Run Network "wlan0" [] 10
+                    , Run Wireless "wlan0" ["-L","0","-H","32","--normal","green","--high","red"] 10
+                    , Run Cpu ["-L","3","-H","50","--normal","green","--high","red"] 10
+                    , Run Memory ["-t","Mem: <usedratio>%"] 10
+                    , Run Com "uname" ["-s","-r"] "" 36000
+                    , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
+                    , Run BatteryP ["ADP0", "BAT0"] ["-t", "<acstatus><watts> <left>% <timeleft>"] 600
+                    , Run TopProc [] 10
+                    , Run TopMem [] 10
+                    , Run DiskU [("/", "<used>/<size>")] [] 20
+                    , Run DiskIO [("/", "R:<read> W:<write>")] [] 10
+                    , Run ThermalZone 0 ["-t","<temp>C"] 30
+                    , Run ThermalZone 1 ["-t","<temp>C"] 30
+                    , Run CoreTemp [] 30
+                    , Run StdinReader
+                    ]
+       , sepChar = "%"
+       , alignSep = "}{"
+       , template = "%StdinReader% | %cpu% (%top%) | %memory% (%topmem%) | %wlan0wi% %wlan0% | disk: %disku% (%diskio%) | %coretemp% %thermal0% %thermal1% | }{ Battery: %battery% | %CYUL% | <fc=#ee9a00>%date%</fc> | %uname%" 
+       }
