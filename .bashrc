@@ -22,14 +22,14 @@ alias dmesg="dmesg --color"
 alias grep='grep -n --color=auto'
 alias ls='ls -hF --color=auto'
 man() {
-	    env LESS_TERMCAP_mb=$'\E[01;31m' \
-	    LESS_TERMCAP_md=$'\E[01;38;5;74m' \
-	    LESS_TERMCAP_me=$'\E[0m' \
-	    LESS_TERMCAP_se=$'\E[0m' \
-	    LESS_TERMCAP_so=$'\E[38;5;246m' \
-	    LESS_TERMCAP_ue=$'\E[0m' \
-	    LESS_TERMCAP_us=$'\E[04;38;5;146m' \
-	    man "$@"
+	env LESS_TERMCAP_mb=$'\E[01;31m' \
+	LESS_TERMCAP_md=$'\E[01;38;5;74m' \
+	LESS_TERMCAP_me=$'\E[0m' \
+	LESS_TERMCAP_se=$'\E[0m' \
+	
+	LESS_TERMCAP_ue=$'\E[0m' \
+	LESS_TERMCAP_us=$'\E[04;38;5;146m' \
+	man "$@"
 	}
 
 # Set prompt. http://maketecheasier.com/8-useful-and-interesting-bash-prompts/2009/09/04
@@ -51,16 +51,19 @@ PATH="$HOME/bin:$PATH"
 # Try to enable the auto-completion (type: "pacman -S bash-completion" to install it).
 [ -r /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
 
-# Try to enable the "Command not found" hook ("pacman -S pkgfile" to install it).
+# Requires command-not-found to be installed from AUR
 # See also: https://wiki.archlinux.org/index.php/Bash#The_.22command_not_found.22_hook
-[ -r /usr/share/doc/pkgfile/command-not-found.bash ] && . /usr/share/doc/pkgfile/command-not-found.bash
+if [ -r /etc/profile.d/cnf.sh ]
+	then
+		source /etc/profile.d/cnf.sh
+fi
 
 # cd and ls in one
 cl() {
-    if [[ -d "$1" ]]; then
-        cd "$1"
-        ls
-    else
-        echo "bash: cl: '$1': Directory not found"
-    fi
+	if [[ -d "$1" ]]; then
+		cd "$1"
+		ls
+	else
+		echo "bash: cl: '$1': Directory not found"
+	fi
 }
