@@ -15,10 +15,12 @@ shopt -s checkwinsize
 shopt -s histappend
 
 # Enable color in various commands.
-alias ls='ls --color=auto'
+alias df="df -h"
+alias diff="colordiff" #requires colordiff package to be installed.
 alias dir="dir --color=auto"
-export GREP_OPTIONS='--color=auto'
 alias dmesg="dmesg --color"
+alias grep='grep -n --color=auto'
+alias ls='ls -hF --color=auto'
 man() {
 	    env LESS_TERMCAP_mb=$'\E[01;31m' \
 	    LESS_TERMCAP_md=$'\E[01;38;5;74m' \
@@ -37,22 +39,14 @@ PS1="\n\[\033[1;37m\]\342\224\214($(if [[ ${EUID} == 0 ]]; then echo '\[\033[01;
 export EDITOR=nano
 export SVN_EDITOR=nano
 
-# Sets svn diff to emit color, and automatically page
-# svn() {
-# 	/usr/bin/svn "${@}" | colordiff
-# }
-
 # easily lock screen
-alias lock=cinnamon-screensaver-lock-dialog
+alias lock=cinnamon-screensaver-lock-dialog #Needs cinnamon-screensaver-lock-dialog package
 
 # find where diskspace is going
 alias diskspace="du -S | sort -n -r | less"
 
 # make custom scripts accessible
 PATH="$HOME/bin:$PATH"
-
-# run the setprompt script
-~/bin/setprompt
 
 # Try to enable the auto-completion (type: "pacman -S bash-completion" to install it).
 [ -r /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
@@ -61,27 +55,12 @@ PATH="$HOME/bin:$PATH"
 # See also: https://wiki.archlinux.org/index.php/Bash#The_.22command_not_found.22_hook
 [ -r /usr/share/doc/pkgfile/command-not-found.bash ] && . /usr/share/doc/pkgfile/command-not-found.bash
 
-# Arch latest news
-if [ "$PS1" ]; then
-	# The characters "£, §" are used as metacharacters. They should not be encountered in a feed...
-	echo -e "$(echo $(curl --silent https://www.archlinux.org/feeds/news/ | awk ' NR == 1 {while ($0 !~ /<\/item>/) {print;getline} sub(/<\/item>.*/,"</item>") ;print}' | sed -e ':a;N;$!ba;s/\n/ /g') | \
-		sed -e 's/&amp;/\&/g
-		s/&lt;\|&#60;/</g
-		s/&gt;\|&#62;/>/g
-		s/<\/a>/£/g
-		s/href\=\"/§/g
-		s/<title>/\\n\\n\\n   :: \\e[01;31m/g; s/<\/title>/\\e[00m ::\\n/g
-		s/<link>/ [ \\e[01;36m/g; s/<\/link>/\\e[00m ]/g
-		s/<description>/\\n\\n\\e[00;37m/g; s/<\/description>/\\e[00m\\n\\n/g
-		s/<p\( [^>]*\)\?>\|<br\s*\/\?>/\n/g
-		s/<b\( [^>]*\)\?>\|<strong\( [^>]*\)\?>/\\e[01;30m/g; s/<\/b>\|<\/strong>/\\e[00;37m/g
-		s/<i\( [^>]*\)\?>\|<em\( [^>]*\)\?>/\\e[41;37m/g; s/<\/i>\|<\/em>/\\e[00;37m/g
-		s/<u\( [^>]*\)\?>/\\e[4;37m/g; s/<\/u>/\\e[00;37m/g
-		s/<code\( [^>]*\)\?>/\\e[00m/g; s/<\/code>/\\e[00;37m/g
-		s/<a[^§|t]*§\([^\"]*\)\"[^>]*>\([^£]*\)[^£]*£/\\e[01;31m\2\\e[00;37m \\e[01;34m[\\e[00;37m \\e[04m\1\\e[00;37m\\e[01;34m ]\\e[00;37m/g
-		s/<li\( [^>]*\)\?>/\n \\e[01;34m*\\e[00;37m /g
-		s/<!\[CDATA\[\|\]\]>//g
-		s/\|>\s*<//g
-		s/ *<[^>]\+> */ /g
-		s/[<>£§]//g')\n\n";
-fi
+# cd and ls in one
+cl() {
+    if [[ -d "$1" ]]; then
+        cd "$1"
+        ls
+    else
+        echo "bash: cl: '$1': Directory not found"
+    fi
+}
