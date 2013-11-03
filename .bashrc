@@ -26,11 +26,10 @@ man() {
 	LESS_TERMCAP_md=$'\E[01;38;5;74m' \
 	LESS_TERMCAP_me=$'\E[0m' \
 	LESS_TERMCAP_se=$'\E[0m' \
-	
 	LESS_TERMCAP_ue=$'\E[0m' \
 	LESS_TERMCAP_us=$'\E[04;38;5;146m' \
 	man "$@"
-	}
+}
 
 # Set prompt. http://maketecheasier.com/8-useful-and-interesting-bash-prompts/2009/09/04
 PS1="\n\[\033[1;37m\]\342\224\214($(if [[ ${EUID} == 0 ]]; then echo '\[\033[01;31m\]\h'; else echo '\[\033[01;34m\]\u@\h'; fi)\[\033[1;37m\])\342\224\200(\$(if [[ \$? == 0 ]]; then echo \"\[\033[01;32m\]\342\234\223\"; else echo \"\[\033[01;31m\]\342\234\227\"; fi)\[\033[1;37m\])\342\224\200(\[\033[1;34m\]\@ \d\[\033[1;37m\])\[\033[1;37m\]\n\342\224\224\342\224\200(\[\033[1;32m\]\w\[\033[1;37m\])\342\224\200(\[\033[1;32m\]\$(ls -1 | wc -l | sed 's: ::g') files, \$(ls -lah | grep -m 1 total | sed 's/total //')b\[\033[1;37m\])\342\224\200> \[\033[0m\]"
