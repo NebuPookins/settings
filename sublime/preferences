@@ -1,12 +1,12 @@
 {
+	"always_show_minimap_viewport": true,
+	"drag_text": false,
+	"draw_minimap_border": true,
+	"draw_white_space": "all",
 	"fade_fold_buttons": false,
+	"highlight_line": true,
+	"highlight_modified_tabs": false
 	"rulers": [78,80,120],
 	"spell_check": true,
 	"tab_size": 2,
-	"draw_minimap_border": true,
-	"always_show_minimap_viewport": true,
-	"highlight_line": true,
-	"draw_white_space": "all",
-	"drag_text": false,
-	"highlight_modified_tabs": false
 }
