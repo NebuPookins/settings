@@ -28,7 +28,7 @@ main = do
 	xmproc <- spawnPipe "/usr/bin/xmobar /home/nebu/.xmobarrc"
 	xmonad $ defaultConfig
 		{ manageHook = composeAll [manageDocks, myManageHook, manageHook defaultConfig]
-		, terminal = "xfce4-terminal"
+		, terminal = "urxvt"
 		, layoutHook = avoidStruts  $  layoutHook defaultConfig
 		, handleEventHook = docksEventHook <+> handleEventHook defaultConfig
 		, logHook = dynamicLogWithPP xmobarPP
