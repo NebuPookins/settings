@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # enables ssh-agent if it is installed (install openssh package to enable this)
-[ -r /usr/bin/ssh-agent ] && . eval $(ssh-agent)
+# [ -r /usr/bin/ssh-agent ] && . eval $(ssh-agent)
 
 # Run these programs on startup
 [ -r /usr/bin/dropboxd ] && . dropboxd &
@@ -28,18 +28,20 @@ case $1 in
 	cinnamon)
 		exec cinnamon-session
 		;;
-	xfce)
-		exec startxfce4
-		;;
+	# xfce)
+	# 	exec startxfce4
+	# 	;;
 	*)
 		# Set up trayer (for dropbox, skype, etc.) in top right corner.
 		trayer --edge top --align right --SetDockType true --SetPartialStrut true --expand true --width 6 --transparent true --alpha 0 --tint 0x000000 --height 16 &
-		# Shows a volume icon
-		volumeicon &
-		# Activate screensaver
-		/usr/bin/xscreensaver -no-splash &
+		# # Shows a volume icon
+		# volumeicon &
+		# # Activate screensaver
+		# /usr/bin/xscreensaver -no-splash &
 		# Show a random wallpaper (requires custom script)
 		[ -r ~/bin/random-wallpaper.sh ] && ~/bin/random-wallpaper.sh &
+		# https://wiki.archlinux.org/index.php/X_resources#Adding_to_xinitrc
+		[[ -f ~/.Xresources ]] && xrdb -merge ~/.Xresources
 		exec xmonad
 		;;
 esac
