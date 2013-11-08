@@ -33,7 +33,7 @@ main = do
 		, handleEventHook = docksEventHook <+> handleEventHook defaultConfig
 		, logHook = dynamicLogWithPP xmobarPP
 			{ ppOutput = hPutStrLn xmproc
-			, ppTitle = xmobarColor "blue" "" . shorten 50
+			, ppTitle = xmobarColor "lightblue" "" . shorten 40
 			}
 		, workspaces = myWorkspaces
 		} `additionalKeys`
