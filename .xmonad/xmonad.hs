@@ -5,13 +5,23 @@ import XMonad.Util.Run(spawnPipe)
 import XMonad.Util.EZConfig(additionalKeys)
 import System.IO
 
-myWorkspaces = ["1:coding","2:web","3:social","4:media","5:utils","6:temp","7","8","9"]
+myWorkspaces =
+	[ "1:<icon=/home/nebu/.xmonad/cpu.xbm/>" --coding
+	, "2:<icon=/home/nebu/.xmonad/fs_01.xbm/>" --web
+	, "3:<icon=/home/nebu/.xmonad/pacman.xbm/>" --social
+	, "4:<icon=/home/nebu/.xmonad/phones.xbm/>" --media
+	, "5:<icon=/home/nebu/.xmonad/arch.xbm/>" --utils
+	, "6:<icon=/home/nebu/.xmonad/wifi_01.xbm/>" --temp
+	, "7"
+	, "8"
+	, "9"
+	]
 myManageHook = composeAll
-	[ className =? "KeePass2" --> doShift "5:utils"
-	, className =? "Pidgin"   --> doShift "3:social"
-	, className =? "Skype"    --> doShift "3:social"
-	, className =? "Subl3"    --> doShift "1:coding"
-	-- className =? "Chromium" --> doShift "2:web" --problems with save dialog, etc.
+	[ className =? "KeePass2" --> doShift "5:<icon=/home/nebu/.xmonad/arch.xbm/>"
+	, className =? "Pidgin"   --> doShift "3:<icon=/home/nebu/.xmonad/pacman.xbm/>"
+	, className =? "Skype"    --> doShift "3:<icon=/home/nebu/.xmonad/pacman.xbm/>"
+	-- , className =? "Subl3"    --> doShift "1:<icon=/home/nebu/.xmonad/cpu.xbm/>" --problems with save dialog, etc.
+	-- className =? "Chromium" --> doShift "2:<icon=/home/nebu/.xmonad/fs_01.xbm/>" --problems with save dialog, etc.
 	]
 
 main = do
