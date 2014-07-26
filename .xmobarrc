@@ -1,5 +1,5 @@
 Config {
-  font = "xft:Droid Sans Mono:size=8"
+  font = "xft:Droid Sans Mono:size=7"
   , border = NoBorder
   , bgColor = "black"
   , borderColor = "black"
@@ -18,17 +18,13 @@ Config {
   , Run TopMem [] 10
   , Run DiskU [("/", "<used>/<size>")] [] 10 --Shows disk space usage
   , Run DiskIO [("/", "R:<read> W:<write>")] ["-m","4"] 10 --Shows disk activity
-  , Run CoreTemp ["-t","[<core0> <core1> <core2> <core3> <core4>]C","-l","green","-n","yellow","-h","red"] 10 --Shows the temperature of the various CPU cores
+  , Run CoreTemp ["-t","[<core0> <core1>]C","-l","green","-n","yellow","-h","red"] 10 --Shows the temperature of the various CPU cores
   , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
-  , Run ThermalZone 1 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10
-  , Run ThermalZone 2 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10
-  -- , Run BatteryP ["ADP0", "BAT0"] ["-t", "<acstatus><watts> <left>% <timeleft>"] 600
   , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> RX:<rx> TX:<tx>","-S","True","-l","green","-n","yellow","-h","red"] 10 --Shows network usage. Use `ip link` to show devicce names.
-  -- , Run Wireless "wlan0" ["-L","0","-H","32","--normal","green","--high","red"] 10
-  , Run Weather "CYUL" ["-t","<icon=/home/nebu/.xmonad/fs_02.xbm/> Montreal: <tempC>C, humid:<rh>% <skyCondition>","-L","18","-H","25","--normal","green","--high","red","--low","#8888FF"] 36000
+  , Run Battery ["-t","<icon=/home/nebu/.xmonad/shroom.xbm/> <timeleft> (<left>%)"] 10
   , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
   ]
   , sepChar = "%"
   , alignSep = "}{"
-  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %coretemp% %thermal0% %thermal1% %thermal2% | %dynnetwork% | %CYUL% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
+  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %coretemp% %thermal0% | %dynnetwork% | %battery% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
 }
