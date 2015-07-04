@@ -20,7 +20,7 @@ alias diff="colordiff" #requires colordiff package to be installed.
 alias dir="dir --color=auto"
 alias dmesg="dmesg --color"
 alias grep='grep -n --color=auto'
-alias ls='ls -hF --color=auto'
+alias ls='ls -h --color=auto'
 man() {
 	env LESS_TERMCAP_mb=$'\E[01;31m' \
 	LESS_TERMCAP_md=$'\E[01;38;5;74m' \
