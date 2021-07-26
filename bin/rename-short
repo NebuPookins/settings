@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+
+if ARGV.length != 1
+  puts "Expect a filename argument, but got:", ARGV
+  puts
+  puts "#{File.basename($0)} is a utility to rename a file to a random short name."
+  puts "This is useful if you have a bunch of files with long meaningless names and"
+  puts "you wish to make them shorter so that they are easier to reference from the"
+  puts "command line. For example, if you have a bunch of downloaded files with"
+  puts "names like `sample-0d3a7b22d17b8c8485d8e9d31515ba61.jpg`, "
+  puts "`sample_18e6567a52afe48dab7a9866136e9cae.jpg`, etc., you can use this"
+  puts "utiltiy to give them more convenient short names."
+  exit 1
+end
+
+def getRandomLetter()
+  rand(36).to_s(36)
+end
+
+def makeARandomUnusedName(base_name, extension)
+  tentative_base_name = base_name + getRandomLetter()
+  tentative_name = tentative_base_name + extension
+  if File.exists?(tentative_name)
+    makeARandomUnusedName(tentative_base_name, extension)
+  else
+    tentative_name
+  end
+end
+
+new_name = makeARandomUnusedName('', File.extname(ARGV[0]))
+puts "Renaming #{ARGV[0]} to #{new_name}"
+File.rename(ARGV[0], new_name)
