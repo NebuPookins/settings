@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+
+# Intended just for Archlinux systems
+unless File.read('/etc/os-release').split("\n").any? {|line| line == 'NAME="Arch Linux"' }
+  abort('This script is intended to only run on Archlinux Systems.')
+end
+# Requires `checkupdates` script (from `pacman-contrib` package) to be installed.
+unless system('pacman -T pacman-contrib > /dev/null')
+  abort('This script requires the pacman-contrib package to be installed.')
+end
+
+ignored_details = [
+  'Name',
+  'Version',
+  'Architecture',
+  'Licenses',
+  'Groups',
+  'Provides',
+  'Depends On',
+  'TODO: Figure out how to handle multi line Optional Deps',
+  'Conflicts With',
+  'Replaces',
+  'Packager',
+  'Build Date',
+  'Install Script',
+  'Validated By'
+]
+
+puts "Checking for updates..."
+`checkupdates`.split("\n").each {|upgrade|
+  puts upgrade
+  `yay -Qi #{upgrade.split()[0]}`.split("\n").each {|package_detail|
+    unless ignored_details.any? { |ignored_detail| package_detail.start_with? ignored_detail}
+      puts package_detail
+    end
+  }
+  puts
+}
+
