@@ -18,7 +18,7 @@ Config {
   , Run TopMem [] 10
   , Run DiskU [("/", "<usedp>")] ["-L", "50", "--low", "green", "-H", "90", "--high", "red"] 10 --Shows disk space usage
   , Run DiskIO [("/", "R:<read> W:<write>")] ["-m","4"] 10 --Shows disk activity
-  , Run CoreTemp ["-t","[<core0> <core1>]C","-l","green","-n","yellow","-h","red"] 10 --Shows the temperature of the various CPU cores
+  , Run MultiCoreTemp ["-t","[<core0> <core1>]C","-L","40","-l","#9999ff","-n","green","-H","60","-h","red"] 10 --Shows the temperature of the various CPU cores
   , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
   , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> RX:<rx> TX:<tx>","-S","True","-l","green","-n","yellow","-h","red"] 10 --Shows network usage. Use `ip link` to show devicce names.
   , Run Battery ["-t","<icon=/home/nebu/.xmonad/shroom.xbm/> <timeleft> (<left>%)"] 10
@@ -26,5 +26,5 @@ Config {
   ]
   , sepChar = "%"
   , alignSep = "}{"
-  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %coretemp% %thermal0% | %dynnetwork% | %battery% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
+  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %multicoretemp% %thermal0% | %dynnetwork% | %battery% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
 }
