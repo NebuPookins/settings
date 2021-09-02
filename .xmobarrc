@@ -22,9 +22,10 @@ Config {
   , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
   , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> [RX:<rx> TX:<tx>]kbps","-m","4", "-L", "524288", "-l","green","-n","yellow","-H","1048576","-h","red"] 10 --Shows network usage. Use `ip link` to show device names.
   , Run Battery ["-t","<icon=/home/nebu/.xmonad/shroom.xbm/> <timeleft> (<left>%)"] 10
+  , Run Weather "KSEA" ["-t","<tempC>C <skyCondition>" ] 18000
   , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
   ]
   , sepChar = "%"
   , alignSep = "}{"
-  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %multicoretemp% %thermal0% | %dynnetwork% | %battery% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
+  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %multicoretemp% %thermal0% | %dynnetwork% | %battery% | %KSEA% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
 }
