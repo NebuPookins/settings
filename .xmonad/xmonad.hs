@@ -1,6 +1,7 @@
 import XMonad
 import XMonad.Config.Desktop
 import XMonad.Hooks.DynamicLog
+import XMonad.Hooks.EwmhDesktops -- For rofi compatibility
 import XMonad.Hooks.ManageDocks
 import XMonad.Util.Run(spawnPipe)
 import XMonad.Util.EZConfig(additionalKeys) -- Needs the arch linux package xmonad-contrib
@@ -36,7 +37,7 @@ myManageHook = composeAll
 
 main = do
 	xmproc <- spawnPipe "/usr/bin/xmobar /home/nebu/.xmobarrc"
-	xmonad $ baseConfig
+	xmonad $ ewmh baseConfig
 	-- xmonad $ desktopConfig
 		{ manageHook = composeAll [manageDocks, myManageHook, manageHook baseConfig]
 		, terminal = "urxvt"
@@ -44,11 +45,12 @@ main = do
 		, handleEventHook = docksEventHook <+> handleEventHook baseConfig
 		, logHook = dynamicLogWithPP xmobarPP
 			{ ppOutput = hPutStrLn xmproc
-			, ppTitle = xmobarColor "lightblue" "" . padR 78 . shorten 78
+			, ppTitle = xmobarColor "lightblue" "" . padR 50 . shorten 50
 			}
 		, workspaces = myWorkspaces
 		} `additionalKeys`
 		[ ((0, xK_Print), spawn "scrot") -- take screenshot; assumes scot is installed
+		, ((mod4Mask, xK_Tab), spawn "rofi -show combi")
 		, ((mod1Mask .|. shiftMask, xK_g), goToSelected defaultGSConfig) -- show list of open windows and switch to selected one; provided by XMonad.Actions.GridSelect
 		, ((mod1Mask, xK_g), gotoMenu) -- shows a dmenu of windows, and switches to the workspace containing the selected one; provided by XMonad.Actions.WindowBringer
 		, ((mod1Mask, xK_b), bringMenu) -- shows a dmenu of windows, and brings the selected one to this workspace; provided by XMonad.Actions.WindowBringer
