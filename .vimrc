@@ -73,5 +73,5 @@ set shiftwidth=2 " When vim wants to indent something (e.g. a FilePlugin says th
 set noexpandtab  " When the user presses the tab key, insert a tab characer (i.e. don't expand the tab into spaces instead.
 
 " Use ocaml's indenting hints.
-# set rtp^="/home/nebu/.opam/default/share/ocp-indent/vim"
+" set rtp^="/home/nebu/.opam/default/share/ocp-indent/vim"
 
