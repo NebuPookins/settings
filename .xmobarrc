@@ -16,7 +16,7 @@ Config {
   , Run TopProc ["-w", "11", "-t","#<no> (<both1>)"] 10 --Shows the number of processes, and what the top consuming process is, and how much CPU it's consuming.
   , Run Memory ["-t","<icon=/home/nebu/.xmonad/mem.xbm/> <usedratio>%","--low","green","--normal","yellow","--high","red"] 10 --Shows how much memory is used (as a percentage), with green/yellow/red threshholds.
   , Run TopMem [] 10
-  , Run DiskU [("/", "<used>/<size>")] [] 10 --Shows disk space usage
+  , Run DiskU [("/", "<usedp>")] ["-L", "50", "--low", "green", "-H", "90", "--high", "red"] 10 --Shows disk space usage
   , Run DiskIO [("/", "R:<read> W:<write>")] ["-m","4"] 10 --Shows disk activity
   , Run CoreTemp ["-t","[<core0> <core1>]C","-l","green","-n","yellow","-h","red"] 10 --Shows the temperature of the various CPU cores
   , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
