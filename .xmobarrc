@@ -13,7 +13,7 @@ Config {
   commands = [
     Run StdinReader --Intended to receive the name of the currently running program
   , Run MultiCpu ["-p","2","-t","<icon=/home/nebu/.xmonad/cpu.xbm/> [<autototal>]%","-L","-1","-H","50","--normal","green","--high","red"] 10 --If usage is < 50%, display green. Otherwise, display in red.
-  , Run TopProc ["-w", "11", "-t","#<no> (<both1>)"] 10 --Shows the number of processes, and what the top consuming process is, and how much CPU it's consuming.
+  , Run TopProc ["-w", "13", "-t","#<no> (<both1>)","--low","green","--high","red"] 10 --Shows the number of processes, and what the top consuming process is, and how much CPU it's consuming.
   , Run Memory ["-t","<icon=/home/nebu/.xmonad/mem.xbm/> <usedratio>%","--low","green","--normal","yellow","--high","red"] 10 --Shows how much memory is used (as a percentage), with green/yellow/red threshholds.
   , Run TopMem [] 10
   , Run DiskU [("/", "<usedp>")] ["-L", "50", "--low", "green", "-H", "90", "--high", "red"] 10 --Shows disk space usage
