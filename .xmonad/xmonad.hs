@@ -8,6 +8,11 @@ import XMonad.Actions.GridSelect -- probably needs xmonad-contrib?
 import XMonad.Actions.WindowBringer -- probably needs xmonad-contrib?
 import System.IO
 
+padR :: Int -> String -> String
+padR n s
+	| length s < n = s ++ replicate (n - length s) ' '
+	| otherwise    = s
+
 baseConfig = desktopConfig
 
 myWorkspaces =
@@ -39,7 +44,7 @@ main = do
 		, handleEventHook = docksEventHook <+> handleEventHook baseConfig
 		, logHook = dynamicLogWithPP xmobarPP
 			{ ppOutput = hPutStrLn xmproc
-			, ppTitle = xmobarColor "lightblue" "" . shorten 80
+			, ppTitle = xmobarColor "lightblue" "" . padR 78 . shorten 78
 			}
 		, workspaces = myWorkspaces
 		} `additionalKeys`
