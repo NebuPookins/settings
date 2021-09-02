@@ -20,7 +20,7 @@ Config {
   , Run DiskIO [("/", "R:<read> W:<write>")] ["-m","4"] 10 --Shows disk activity
   , Run MultiCoreTemp ["-t","[<core0> <core1>]C","-L","40","-l","#9999ff","-n","green","-H","60","-h","red"] 10 --Shows the temperature of the various CPU cores
   , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
-  , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> RX:<rx> TX:<tx>","-S","True","-l","green","-n","yellow","-h","red"] 10 --Shows network usage. Use `ip link` to show devicce names.
+  , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> [RX:<rx> TX:<tx>]kbps","-m","4", "-L", "524288", "-l","green","-n","yellow","-H","1048576","-h","red"] 10 --Shows network usage. Use `ip link` to show device names.
   , Run Battery ["-t","<icon=/home/nebu/.xmonad/shroom.xbm/> <timeleft> (<left>%)"] 10
   , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
   ]
