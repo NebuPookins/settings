@@ -1,66 +1,34 @@
-urxvt*font:           xft:Droid Sans Mono:size=10
-urxvt*boldFont:       xft:Droid Sans Mono:size=10
-urxvt*italicFont:     xft:Droid Sans Mono:size=10
-urxvt*bolditalicFont: xft:Droid Sans Mono:size=10
-urxvt*scrollBar:      true
-URxvt.scrollstyle:    rxvt
-!urxvt*internalBorder: 6
-
-urxvt*background:    #000000
-urxvt*foreground:    #FFFFFF
-urxvt*inheritPixmap: true
-urxvt*shading:       10
-urxvt*fading:        60 !Fades out when loses focus.
-
-! do not scroll with output
-URxvt*scrollTtyOutput: false
-! scroll in relation to buffer (with mouse scroll or Shift+Page Up)
-URxvt*scrollWithBuffer: true
-! scroll back to the bottom on keypress
-URxvt*scrollTtyKeypress: true
-
+xterm*background:    #000000
+xterm*foreground:    #FFFFFF
 
 ! 0: black
 *color0:  #000000
 *color8:  #555555
 
 ! 1: red
-*color1:  #AA0000
-*color9:  #FF5555
+*color1:  #FF0000
+*color9:  #FF8888
 
 ! 2: green
-*color2:  #00AA00
-*color10: #55FF55
+*color2:  #00FF00
+*color10: #88FF88
 
 ! 3: yellow
-*color3:  #AA5500
-*color11: #FFFF55
+*color3:  #FFFF00
+*color11: #FFFF88
 
 ! 4: blue
-*color4:  #0000AA
-*color12: #5555FF
+*color4:  #0000FF
+*color12: #8888FF
 
 ! 5: magenta
-*color5:  #AA00AA
-*color13: #FF55FF
+*color5:  #FF00FF
+*color13: #FF88FF
 
 ! 6: cyan
-*color6:  #00AAAA
-*color14: #55FFFF
+*color6:  #00FFFF
+*color14: #88FFFF
 
 ! 7: white
 *color7:  #AAAAAA
 *color15: #FFFFFF
-
-
-urxvt*perl-ext-common:  default,matcher
-urxvt*urlLauncher:      /usr/bin/chromium
-urxvt*matcher.button:   1
-URxvt.colorUL:          #4682B4
-
-urxvt*cursorBlink:      true
-urxvt*termName:         rxvt
-urxvt*saveLines:        2000
-
-!Not sure what this next line does.
-URxvt.loginShell:        true
