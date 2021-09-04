@@ -1,16 +1,13 @@
 #!/bin/bash
 
-shopt -s nullglob
-cd ~/Pictures/Wallpapers
+WALLPAPER_DIR="/home/nebu/h/My Documents/My Pictures/Wallpapers/"
 
 while true; do
-	files=()
-	for i in *.jpg *.png; do
-		[[ -f $i ]] && files+=("$i")
-	done
-	range=${#files[@]}
-
-	((range)) && feh --bg-scale "${files[RANDOM % range]}"
-
-	sleep 15m
+	if [ -d "$WALLPAPER_DIR" ]; then
+		feh --bg-max --randomize "$WALLPAPER_DIR"
+		sleep 15m
+	else
+		echo "$WALLPAPER_DIR does not seem to be a directory. Exiting."
+		exit 1
+	fi
 done
