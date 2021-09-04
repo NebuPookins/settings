@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+echo "Executing Java AWT fix."
+if test -f "/usr/bin/idea"; then
+	_JAVA_AWT_WM_NONREPARENTING=1 /usr/bin/idea
+else
+	echo "Intellij Idea does not seem to be installed."
+fi
