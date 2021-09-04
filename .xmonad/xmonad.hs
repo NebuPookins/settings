@@ -40,7 +40,7 @@ main = do
 	xmonad $ ewmh baseConfig
 	-- xmonad $ desktopConfig
 		{ manageHook = composeAll [manageDocks, myManageHook, manageHook baseConfig]
-		, terminal = "urxvt"
+		, terminal = "xfce4-terminal"
 		, layoutHook = avoidStruts $ layoutHook baseConfig
 		, handleEventHook = docksEventHook <+> handleEventHook baseConfig
 		, logHook = dynamicLogWithPP xmobarPP
