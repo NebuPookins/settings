@@ -1,0 +1,189 @@
+#!/usr/bin/env ruby
+
+require 'shellwords'
+require 'colorize'
+require 'io/console'
+
+files_here = Dir.entries('.').filter {|name| name != '.' && name != '..'}
+
+files_here.each do |file|
+  mpg123_output = %x{mpg123-id3dump #{Shellwords.escape(file)}}.lines.map { |line| line.strip }
+  info = {}
+  maybe_mutate_info = lambda {|tag, prefix, line|
+    if line.start_with? prefix
+      info[tag] = line.delete_prefix(prefix)
+      true
+    else
+      false
+    end
+  }
+  ignore = lambda {|prefix, line|
+    line.start_with? prefix
+  }
+  parse_state = :waiting_for_id3v1
+  id3v2raw_frame = nil
+  mpg123_output.each do |line|
+    if line == ''
+      next
+    end
+    case parse_state
+    when :waiting_for_id3v1
+      if line.start_with? '===='
+        case line
+        when '====      ID3v1       ===='
+          parse_state = :parsing_id3v1
+        when '====      ID3v2       ===='
+          parse_state = :parsing_id3v2
+        when '==== ID3v2 Raw frames ===='
+          parse_state = :parsing_id3v2_raw
+        else
+          raise "Unknown header type: #{line}"
+        end
+      else
+        #ignore the line
+      end
+    when :parsing_id3v1
+      if maybe_mutate_info.call(:title, 'Title: ', line)
+      elsif maybe_mutate_info.call(:artist, 'Artist: ', line)
+      elsif maybe_mutate_info.call(:album, 'Album: ', line)
+      elsif maybe_mutate_info.call(:year, 'Year: ', line)
+      elsif ignore.call('Comment:', line)
+      elsif ignore.call('Genre:', line)
+      elsif line == '====      ID3v2       ===='
+        parse_state = :parsing_id3v2
+      elsif line == '==== ID3v2 Raw frames ===='
+        parse_state = :parsing_id3v2_raw
+      else
+        raise "Unknown ID3v1 tag: #{line}"
+      end
+    when :parsing_id3v2
+      if maybe_mutate_info.call(:title, 'Title: ', line)
+      elsif maybe_mutate_info.call(:artist, 'Artist: ', line)
+      elsif maybe_mutate_info.call(:album, 'Album: ', line)
+      elsif maybe_mutate_info.call(:year, 'Year: ', line)
+      elsif ignore.call('Comment:', line)
+      elsif ignore.call('Genre:', line)
+      elsif line == '==== ID3v2 Raw frames ===='
+        parse_state = :parsing_id3v2_raw
+      else
+        raise "Unknown ID3v2 tag: #{line}"
+      end
+    when :parsing_id3v2_raw
+      # See https://id3.org/id3v2.4.0-frames for the defined frame types.
+      case id3v2raw_frame
+      when nil
+        match = /(....) language\(\)/.match(line)
+        if match
+          id3v2raw_frame = match[1].to_sym
+          next
+        end
+        match = /TXXX description\((.+)\)/.match(line)
+        if match
+          id3v2raw_frame = "TXXX_#{match[1]}".to_sym
+          next
+        end
+        raise "Unknown id3v2 raw frame: #{line}"
+      when :TIT2
+        info[:title] = line
+        id3v2raw_frame = nil
+      when :TPE1
+        info[:artist] = line
+        id3v2raw_frame = nil
+      when :TPE2, :TPE3, :TPE4, :TOPE
+        # Other performers. Ignore.
+        id3v2raw_frame = nil
+      when :TRCK
+        match = /([0-9]+)\/([0-9]+)/.match(line)
+        if match
+          info[:track] = match[1]
+          info[:max_track] = match[2]
+          id3v2raw_frame = nil
+          next
+        end
+        match = /([0-9]+)/.match(line)
+        if match
+          info[:track] = match[1]
+          id3v2raw_frame = nil
+          next
+        end
+        raise "Don't know how to parse track number: #{line}"
+      when :TALB
+        info[:album] = line
+        id3v2raw_frame = nil
+      when :TPOS
+        match = /([0-9]+)\/([0-9]+)/.match(line)
+        if match
+          info[:disc] = match[1]
+          info[:max_disc] = match[2]
+          id3v2raw_frame = nil
+          next
+        end
+        match = /([0-9]+)/.match(line)
+        if match
+          info[:disc] = match[1]
+          id3v2raw_frame = nil
+          next
+        end
+        raise "Don't know how to parse disc number: #{line}"
+      when :TLEN
+        # Length of track in milliseconds. Ignore.
+        id3v2raw_frame = nil
+      when :TMED
+        # Medium type, e.g. "CD". Ignore.
+        id3v2raw_frame = nil
+      when :TPUB
+        # Publisher. Ignore.
+        id3v2raw_frame = nil
+      when :TSOA, :TSOP, :TSOT
+        # Sort order for album, performer or title. Ignore.
+        id3v2raw_frame = nil
+      when :TSSE, :TENC
+        # Software or person that did the encoding. Ignore.
+        id3v2raw_frame = nil
+      when :TDAT, :TORY, :TYER, :TSO2
+        # Unknown. Ignore.
+        id3v2raw_frame = nil
+      when :TXXX_SCRIPT, :TXXX_ASIN, :TXXX_BARCODE, :TXXX_CATALOGNUMBER
+        # E.g. "Latin". Ignore.
+        id3v2raw_frame = nil
+      else
+        # By default, we should just ignore any frames we don't understand. During development, it's useful to error out on frames we don't understand, so we know what to implement next.
+        # raise "Unknown id3v2 raw frame: #{id3v2raw_frame}"
+        id3v2raw_frame = nil
+      end
+    else
+      raise "Unknown parse_state: #{parse_state}"
+    end
+  end
+
+  new_name = nil
+
+  if info[:max_disc] != nil && info[:max_disc] != "1"
+    puts info
+    raise "TODO: Implement multi-disc albums."
+  end
+  if info[:album] && info[:track] && info[:artist] && info[:title]
+    if info[:max_track]
+      max_track = info[:max_track].to_i(base=10)
+      if max_track < 10
+        track_pad = 1
+      elsif 10 <= max_track && max_track < 100
+        track_pad = 2
+      elsif 100 <= max_track && max_track < 1000
+        track_pad = 3
+      else
+        raise "This has never happened in practice before: Max track is #{max_track}"
+      end
+    else
+      track_pad = 1
+    end
+    new_name = "#{info[:album]} (#{info[:track].rjust(track_pad, '0')}) #{info[:artist]} - #{info[:title]}.mp3"
+  end
+  if file != new_name
+    puts "Renaming from #{file.colorize(:red)}\n           to #{new_name.colorize(:green)}\n(y/n)?"
+    if STDIN.getch == 'y'
+      File.rename(file, new_name)
+    end
+  end
+end
+
