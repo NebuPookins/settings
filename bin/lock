@@ -1,0 +1,17 @@
+#!/usr/bin/env fish
+
+# ASSUMPTIONS:
+# - fish shell is installed to execute this script
+# - You have wallpapers in ~/Pictures/Wallpapers to use as the lock screen background
+# - You have imagemagick installed to do command line modification of images via `convert`.
+# - You have `i3lock` installed to actually lock the screen.
+
+set RANDOMWALLPAPER (ls ~/Pictures/Wallpapers/* | sort --random-sort | head -n 1)
+set FILENAME "/tmp/i3lock.tmp.png"
+set LOCKTIME (date +"%I:%M %p")
+set MESSAGE "BRB since $LOCKTIME"
+convert "$RANDOMWALLPAPER" -scale 1920x1080^ -font Noto-Sans-Display-Black -pointsize 100 -strokewidth 3 -gravity center -stroke black -fill white -annotate 0 "$MESSAGE" -extent 1920x1080 $FILENAME
+i3lock --beep --ignore-empty-password --show-failed-attempts --tiling --image $FILENAME
+# i3lock --beep --ignore-empty-password --show-failed-attempts --image $FILENAME
+# i3lock --beep --ignore-empty-password --show-failed-attempts --tiling --color=000000
+
