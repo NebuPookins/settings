@@ -82,14 +82,14 @@ myManageHook = composeAll
 
 main = do
   xmproc <- spawnPipe "/usr/bin/xmobar /home/nebu/.xmobarrc"
-  xmonad $ ewmh baseConfig
-    { manageHook = composeAll [manageDocks, myManageHook, manageHook baseConfig]
+  xmonad $ docks $ ewmh baseConfig
+    { manageHook = composeAll [myManageHook, manageHook baseConfig]
     , terminal = "xfce4-terminal"
     , layoutHook = spacingRaw True (Border 0 0 0 0) False (Border 1 1 1 1) True $ avoidStruts $ layoutHook baseConfig
     , borderWidth = 2
     , focusedBorderColor = "#ffff00"
     , normalBorderColor = "#000000"
-    , handleEventHook = docksEventHook <+> handleEventHook baseConfig
+    , handleEventHook = handleEventHook baseConfig
     , logHook = dynamicLogWithPP xmobarPP
       { ppOutput = hPutStrLn xmproc
       , ppTitle = xmobarColor "lightblue" ""
