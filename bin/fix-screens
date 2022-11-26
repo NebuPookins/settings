@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+# This is very specific to my hardware setup, exactly which physical monitors
+# I have and where they are positioned.
+
+# This used to try to detect which port things appeared in, but in my new
+# setup, this is too complicated. Maybe I can revisit this sometime but for
+# now I'm hardcoding it.
+
+xrandr --output DisplayPort-1 --off
+sleep 0.1
+xrandr --output DisplayPort-1 --primary --mode 3440x1440
+# xrandr --output DisplayPort-0 --auto --left-of DisplayPort-1
+xrandr --output HDMI-A-0 --auto
+xrandr --output HDMI-A-0 --right-of DisplayPort-1
+xrandr --output HDMI-A-1 --auto
+xrandr --output HDMI-A-1 --left-of DisplayPort-1
+# xrandr --output DVI-D-0 --off
+xrandr --output DVI-D-0 --auto
+xrandr --output DVI-D-0 --above HDMI-A-1
+
+exit
+
+DISPLAY_PORT=$(xrandr | grep "DisplayPort-[0-9] connected" | cut -d " " -f 1)
+echo "Detected DisplayPort is connected to: $DISPLAY_PORT"
+# if it's DisplayPort-0, then it's probably the UltraWide in PictureByPicture mode.
+
+xrandr --output $DISPLAY_PORT --off
+sleep 0.1 # TODO: figure out shortest reliable time 0 < ??? < 1
+if [[ $DISPLAY_PORT == "DisplayPort-0" ]]; then
+	echo "Probably in Picture-By-Picture mode; using narrower resolution."
+	# TODO
+	# xrandr --output $DISPLAY_PORT --primary --mode 1720x1440 --rate 60
+	xrandr --output $DISPLAY_PORT --primary --auto
+else
+	xrandr --output $DISPLAY_PORT --primary --auto
+fi
+xrandr --output HDMI-A-0 --left-of $DISPLAY_PORT
+xrandr --output DVI-D-0 --above $DISPLAY_PORT
+timeout 0.1s random-wallpaper.sh
