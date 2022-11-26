@@ -60,12 +60,19 @@ myKeys =
       , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
   ]
 
+-- You can use the command `xprop | grep -E "WM_NAME|WM_CLASS|WM_WINDOW_ROLE"` to get the information for the hooks.
+-- WM_CLASS[0] -> resource, WM_CLASS[1] -> className, WM_NAME -> title, WM_WINDOW_ROLE -> role
+
 myManageHook = composeAll
-  [ className =? "KeePass2"        --> doShift "6:util"
-  , className =? "Pidgin"          --> doShift "3:soci"
-  , className =? "Skype"           --> doShift "3:soci"
-  , role =? "GtkFileChooserDialog" --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
-  , className =? "MPlayer"         --> unfloat
+  [ className =? "Pidgin"                         --> doShift "3:socials"
+  , className =? "Skype"                          --> doShift "3:socials"
+  , className =? "Caprine"                        --> doShift "3:socials"
+  , className =? "discord"                        --> doShift "3:socials"
+  , className =? "KeePass2"                       --> doShift "6:utilities"
+  , className =? "Steam"                          --> doShift "7:games"
+  , className =? "com.moonlight_stream.Moonlight" --> doShift "8:moonlight"
+  , role =? "GtkFileChooserDialog"                --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
+  , className =? "MPlayer"                        --> unfloat
   -- , className =? "Subl3"    --> doShift "1:<icon=/home/nebu/.xmonad/cpu.xbm/>" --problems with save dialog, etc.
   -- className =? "Chromium" --> doShift "2:<icon=/home/nebu/.xmonad/fs_01.xbm/>" --problems with save dialog, etc.
   ]
