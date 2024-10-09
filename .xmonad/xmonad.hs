@@ -64,17 +64,24 @@ myKeys =
 -- WM_CLASS[0] -> resource, WM_CLASS[1] -> className, WM_NAME -> title, WM_WINDOW_ROLE -> role
 
 myManageHook = composeAll
-  [ className =? "Pidgin"                         --> doShift "3:socials"
-  , className =? "Skype"                          --> doShift "3:socials"
-  , className =? "Caprine"                        --> doShift "3:socials"
-  , className =? "discord"                        --> doShift "3:socials"
+  [ className =? "Caprine"                        --> doShift "3:socials"
+--, className =? "Chromium"                       --> doShift "2:<icon=/home/nebu/.xmonad/fs_01.xbm/>" --problems with save dialog, etc.
   , className =? "KeePass2"                       --> doShift "6:utilities"
-  , className =? "Steam"                          --> doShift "7:games"
-  , className =? "com.moonlight_stream.Moonlight" --> doShift "8:moonlight"
-  , role =? "GtkFileChooserDialog"                --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
   , className =? "MPlayer"                        --> unfloat
-  -- , className =? "Subl3"    --> doShift "1:<icon=/home/nebu/.xmonad/cpu.xbm/>" --problems with save dialog, etc.
-  -- className =? "Chromium" --> doShift "2:<icon=/home/nebu/.xmonad/fs_01.xbm/>" --problems with save dialog, etc.
+  , className =? "Moonlight"                      --> doShift "8:moonlight"
+  , className =? "Pidgin"                         --> doShift "3:socials"
+  , className =? "Skype"                          --> doShift "3:socials"
+  , className =? "Steam"                          --> doShift "7:games"
+--, className =? "Subl3"                          --> doShift "1:<icon=/home/nebu/.xmonad/cpu.xbm/>" --problems with save dialog, etc.
+  , className =? "Xfce4-notifyd"                  --> doIgnore -- Prevent notifications (e.g. Discord) from stealing focus
+  , className =? "com.moonlight_stream.Moonlight" --> doShift "8:moonlight"
+  , className =? "discord"                        --> doShift "3:socials"
+  , className =? "jetbrains-idea-ce"              --> doShift "5:coding"
+--, className =? "league of legends.exe"          --> doShift "7:games"
+  , className =? "obsidian"                       --> doShift "F1:obsidian"
+  , role      =? "GtkFileChooserDialog"           --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
+--, title     =? "League of Legends"              --> doShift "7:games"
+  , title     =? "Lutris"                         --> doShift "7:games"
   ]
   where
     role = stringProperty "WM_WINDOW_ROLE"
