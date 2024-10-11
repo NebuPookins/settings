@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# Get the file path from the first command line argument
+FILE_PATH=$1
+
+# Use xdg-mime to query the file type
+FILE_TYPE=$(xdg-mime query filetype "$FILE_PATH")
+
+# Print the file type to the terminal
+echo "The file type is: $FILE_TYPE"
+
+env XDG_UTILS_DEBUG_LEVEL=10 xdg-mime query default "$FILE_TYPE"
+
