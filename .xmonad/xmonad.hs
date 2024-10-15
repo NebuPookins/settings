@@ -60,6 +60,18 @@ myKeys =
       , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
   ]
 
+-- Floats a window with a specified width and height in pixels
+doFloatWithSizePixels :: Int -> Int -> ManageHook
+doFloatWithSizePixels pw ph = do
+  screen <- liftX $ gets (screenRect . W.screenDetail . W.current . windowset)
+  let screenW = fromIntegral $ rect_width screen
+      screenH = fromIntegral $ rect_height screen
+      w = fromIntegral pw / screenW
+      h = fromIntegral ph / screenH
+      x = (1 - w) / 2
+      y = (1 - h) / 2
+  doRectFloat (W.RationalRect x y w h)
+
 -- You can use the command `xprop | grep -E "WM_NAME|WM_CLASS|WM_WINDOW_ROLE"` to get the information for the hooks.
 -- WM_CLASS[0] -> resource, WM_CLASS[1] -> className, WM_NAME -> title, WM_WINDOW_ROLE -> role
 
@@ -82,6 +94,7 @@ myManageHook = composeAll
   , role      =? "GtkFileChooserDialog"           --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
 --, title     =? "League of Legends"              --> doShift "7:games"
   , title     =? "Lutris"                         --> doShift "7:games"
+  , title     =? "Booty Farm"                     --> doFloatWithSizePixels 1024 768 --TODO: Still learning good values for this
   ]
   where
     role = stringProperty "WM_WINDOW_ROLE"
