@@ -82,6 +82,7 @@ myManageHook = composeAll
   , className =? "KeePass2"                       --> doShift "6:utilities"
   , className =? "MPlayer"                        --> unfloat
   , className =? "Moonlight"                      --> doShift "8:moonlight"
+  , className =? "moonlight"                      --> doShift "8:moonlight"
   , className =? "Pidgin"                         --> doShift "3:socials"
   , className =? "Skype"                          --> doShift "3:socials"
   , className =? "Steam"                          --> doShift "7:games"
