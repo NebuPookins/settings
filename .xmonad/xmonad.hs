@@ -8,6 +8,7 @@ import XMonad.Layout.Spacing
 import XMonad.Layout.LayoutScreens
 import XMonad.Layout.TwoPane
 import XMonad.Util.Run(spawnPipe)
+import XMonad.Util.SpawnOnce
 import XMonad.Util.EZConfig(additionalKeys) -- Needs the arch linux package xmonad-contrib
 import XMonad.Actions.GridSelect -- probably needs xmonad-contrib?
 import XMonad.Actions.WindowBringer -- probably needs xmonad-contrib?
@@ -100,6 +101,9 @@ myManageHook = composeAll
     role = stringProperty "WM_WINDOW_ROLE"
     unfloat = ask >>= doF . W.sink
 
+myStartupHook = do
+  spawnOnce "dunst"
+
 main = do
   xmproc <- spawnPipe "/usr/bin/xmobar /home/nebu/.xmobarrc"
   xmonad $ docks $ ewmh baseConfig
@@ -115,4 +119,6 @@ main = do
       , ppTitle = xmobarColor "lightblue" ""
       }
     , workspaces = myWorkspaces
+    , startupHook = myStartupHook
     } `additionalKeys` myKeys
+
