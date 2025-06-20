@@ -52,7 +52,7 @@ myKeys =
   [ ((0, xK_Print), spawn "scrot") -- take screenshot; assumes scot is installed
   , ((mod4Mask .|. shiftMask, xK_s), spawn "flameshot gui") -- take screenshot; assumes flameshot is installed.
   , ((mod1Mask, xK_p), spawn "rofi -show combi")
-  , ((mod1Mask .|. shiftMask, xK_space), layoutSplitScreen 2 (TwoPane 0.5 0.5))
+  , ((mod1Mask .|. shiftMask, xK_space), layoutSplitScreen 2 (TwoPane 0.47 0.53)) -- 0.45 0.55 < ??? < 0.50 0.50
   , ((mod1Mask .|. controlMask .|. shiftMask, xK_space), rescreen)
   ]
   ++
