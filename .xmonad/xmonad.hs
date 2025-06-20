@@ -1,13 +1,13 @@
 import XMonad
 import XMonad.Config.Desktop
-import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.EwmhDesktops -- For rofi compatibility
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.ManageHelpers -- for doRectFloat
+import XMonad.Hooks.StatusBar
+import XMonad.Hooks.StatusBar.PP
 import XMonad.Layout.Spacing
 import XMonad.Layout.LayoutScreens
 import XMonad.Layout.TwoPane
-import XMonad.Util.Run(spawnPipe)
 import XMonad.Util.SpawnOnce
 import XMonad.Util.EZConfig(additionalKeys) -- Needs the arch linux package xmonad-contrib
 import XMonad.Actions.GridSelect -- probably needs xmonad-contrib?
@@ -15,6 +15,12 @@ import XMonad.Actions.WindowBringer -- probably needs xmonad-contrib?
 import System.IO
 
 import qualified XMonad.StackSet as W -- for RationalRect
+
+myPP = xmobarPP
+    { ppTitle = xmobarColor "lightblue" ""
+    -- Based on the provided xmonad.hs, ppOutput is handled by statusBarPipe
+    -- so it does not need to be in myPP.
+    }
 
 padR :: Int -> String -> String
 padR n s
@@ -106,8 +112,8 @@ myStartupHook = do
   spawnOnce "dunst"
 
 main = do
-  xmproc <- spawnPipe "/usr/bin/xmobar /home/nebu/.xmobarrc"
-  xmonad $ docks $ ewmh baseConfig
+  mySB <- statusBarPipe "/usr/bin/xmobar /home/nebu/.xmobarrc" (pure myPP)
+  xmonad $ withSB mySB $ docks $ ewmh baseConfig
     { manageHook = composeAll [myManageHook, manageHook baseConfig]
     , terminal = "xfce4-terminal"
     , layoutHook = spacingRaw True (Border 0 0 0 0) False (Border 1 1 1 1) True $ avoidStruts $ layoutHook baseConfig
@@ -115,10 +121,6 @@ main = do
     , focusedBorderColor = "#ffff00"
     , normalBorderColor = "#000000"
     , handleEventHook = handleEventHook baseConfig
-    , logHook = dynamicLogWithPP xmobarPP
-      { ppOutput = hPutStrLn xmproc
-      , ppTitle = xmobarColor "lightblue" ""
-      }
     , workspaces = myWorkspaces
     , startupHook = myStartupHook
     } `additionalKeys` myKeys
