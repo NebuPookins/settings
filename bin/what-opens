@@ -11,3 +11,6 @@ echo "The file type is: $FILE_TYPE"
 
 env XDG_UTILS_DEBUG_LEVEL=10 xdg-mime query default "$FILE_TYPE"
 
+echo "To change this, run xdg-mime default some-app.desktop $FILE_TYPE"
+
+echo "To see all apps, try find /usr/share/applications/ -name '*.desktop'"
