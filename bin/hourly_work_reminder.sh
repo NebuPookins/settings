@@ -2,7 +2,7 @@
 
 # Function to send notification
 send_notification() {
-    notify-send "Work Reminder" "Stay on track with your tasks!"
+    notify-send --app-name="Hourly Work Reminder" --icon="file:///usr/share/icons/breeze/applets/256/org.kde.plasma.analogclock.svg" "Work Reminder" "Stay on track with your tasks!"
 
     # Play a sound using paplay if available
     if command -v paplay &> /dev/null; then
@@ -14,8 +14,8 @@ send_notification() {
 
 # Function to calculate sleep time until the next hour
 time_until_next_hour() {
-    current_minute=$(date +%M)
-    current_second=$(date +%S)
+    current_minute=$(date +%-M) # Remove leading zero
+    current_second=$(date +%-S) # Remove leading zero
     minutes_until_next_hour=$((60 - current_minute))
     seconds_until_next_hour=$((minutes_until_next_hour * 60 - current_second))
     echo $seconds_until_next_hour
