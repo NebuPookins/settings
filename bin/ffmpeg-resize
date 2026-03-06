@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Check if correct number of arguments are provided
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <input_file> <target_size_mb>"
+    exit 1
+fi
+
+file=$1
+target_size_mb=$2  # target size in MB
+
+# Check if input file exists
+if [ ! -f "$file" ]; then
+    echo "Error: Input file '$file' not found."
+    exit 1
+fi
+
+# Check if ffmpeg and ffprobe are installed
+if ! command -v ffmpeg &> /dev/null || ! command -v ffprobe &> /dev/null; then
+    echo "Error: This script requires ffmpeg and ffprobe to be installed."
+    exit 1
+fi
+
+# Convert target size to bits
+target_size=$(( target_size_mb * 1000 * 1000 * 8 )) # target size in bits
+
+# Get video length
+length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$file")
+length_round_up=$(( ${length%.*} + 1 ))
+
+# Calculate bitrates
+total_bitrate=$(( target_size / length_round_up ))
+audio_bitrate=$(( 128 * 1000 )) # 128k bit rate
+video_bitrate=$(( total_bitrate - audio_bitrate ))
+
+# Create output filename
+output_file="${file%.*}-${target_size_mb}mb.mp4"
+
+echo "Resizing '$file' to approximately $target_size_mb MB..."
+echo "Video bitrate: $video_bitrate bits/s"
+echo "Audio bitrate: $audio_bitrate bits/s"
+
+# Perform the conversion
+ffmpeg -i "$file" \
+    -b:v $video_bitrate \
+    -maxrate:v $video_bitrate \
+    -bufsize:v $(( target_size / 20 )) \
+    -b:a $audio_bitrate \
+    "$output_file"
+
+if [ $? -eq 0 ]; then
+    echo "Conversion complete: '$output_file'"
+    # Get actual file size
+    actual_size=$(du -h "$output_file" | cut -f1)
+    echo "Actual file size: $actual_size"
+else
+    echo "Error: Conversion failed."
+    exit 1
+fi
