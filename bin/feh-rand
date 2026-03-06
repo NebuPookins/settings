@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# feh-rand — pick a random item in ".", then open with feh as requested.
+
+set -euo pipefail
+
+# Common feh options
+FEH_OPTS=(
+  --draw-filename
+  --draw-exif
+  --auto-rotate
+  --auto-zoom
+  --scale-down
+)
+
+# Ensure feh exists
+command -v feh >/dev/null 2>&1 || {
+  echo "Error: feh not found in PATH." >&2
+  exit 1
+}
+
+# Build a null-delimited list of entries in "." (non-dotfiles), depth 1.
+# %P prints the path relative to the start dir.
+mapfile -d '' -t entries < <(
+  find . -mindepth 1 -maxdepth 1 -not -name '.*' -printf '%P\0'
+)
+
+# No candidates?
+if (( ${#entries[@]} == 0 )); then
+  echo "No non-hidden files or directories found in the current directory." >&2
+  exit 1
+fi
+
+# Pick one at random (null-safe)
+choice="$(printf '%s\0' "${entries[@]}" | shuf -z -n 1 | tr -d '\0')"
+echo "Randomly selected $choice"
+
+# Decide how to open
+if [[ -f "$choice" ]]; then
+  # File: open the current directory's images, starting at that file.
+  # --sort filename keeps things ordered.
+  feh "${FEH_OPTS[@]}" --sort filename --start-at "$choice" .
+elif [[ -d "$choice" ]]; then
+  # Directory: enter it and browse images in order.
+  cd "$choice"
+  feh "${FEH_OPTS[@]}" --sort filename
+else
+  echo "Selected item is neither a regular file nor a directory: $choice" >&2
+  exit 1
+fi
+
