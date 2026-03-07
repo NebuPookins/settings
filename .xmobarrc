@@ -8,24 +8,25 @@ Config {
   , hideOnStart = False
   , persistent = True
   , fgColor = "white"
+  -- , position = TopW L 96   -- "96%" comes from trial and error from what works with trayer.
   , position = Top
   , lowerOnStart = True
   commands = [
     Run StdinReader --Intended to receive the name of the currently running program
+  , Run XMonadLog --Intended to read the name of the currently running program
   , Run MultiCpu ["-p","2","-t","<icon=/home/nebu/.xmonad/cpu.xbm/> [<autototal>]%","-L","-1","-H","50","--normal","green","--high","red"] 10 --If usage is < 50%, display green. Otherwise, display in red.
   , Run TopProc ["-w", "13", "-t","#<no> (<both1>)","--low","green","--high","red"] 10 --Shows the number of processes, and what the top consuming process is, and how much CPU it's consuming.
   , Run Memory ["-t","<icon=/home/nebu/.xmonad/mem.xbm/> <usedratio>%","--low","green","--normal","yellow","--high","red"] 10 --Shows how much memory is used (as a percentage), with green/yellow/red threshholds.
   , Run TopMem [] 10
-  , Run DiskU [("/", "<usedp>%")] ["-L", "80", "--normal", "orange", "-H", "90", "--high", "red"] 10 --Shows disk space usage
-  , Run DiskIO [("/", "R:<read> W:<write>")] ["-m","4"] 10 --Shows disk activity
-  , Run MultiCoreTemp ["-t","[<core0> <core1>]C","-L","40","-l","#9999ff","-n","green","-H","60","-h","red"] 10 --Shows the temperature of the various CPU cores
-  , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
-  , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> [RX:<rx> TX:<tx>]kbps","-m","4", "-L", "524288", "-l","green","-n","yellow","-H","1048576","-h","red"] 10 --Shows network usage. Use `ip link` to show device names.
-  , Run Battery ["-t","<icon=/home/nebu/.xmonad/shroom.xbm/> <timeleft> (<left>%)"] 10
-  , Run Weather "KSEA" ["-t","<tempC>C <skyCondition>" ] 18000
+  , Run DiskU [("/mnt/safe", "S:<usedp>%"), ("/", "B:<usedp>%"), ("/mnt/fast", "F:<usedp>%"), ("/mnt/unsafe", "U:<usedp>%")] ["-L", "80", "--normal", "orange", "-H", "90", "--high", "red"] 10 --Shows disk space usage
+  , Run DiskIO [("/mnt/safe", "R:<read> W:<write>")] ["-m","4"] 10 --Shows disk activity
+  , Run MultiCoreTemp ["-t","[<core0> <core1>]C","-L","40","-l","#9999ff","-n","green","-H","85","-h","red"] 10 --Shows the temperature of the various CPU cores
+  -- , Run ThermalZone 0 ["-t","<temp>C","-l","green","-n","yellow","-h","red"] 10 --Shows various thermal zones. See /sys/class/thermal
+  , Run DynNetwork ["-t","<icon=/home/nebu/.xmonad/net_wired.xbm/> <dev> [RX:<rx> TX:<tx>]kbps","-m","5", "-L", "524288", "-l","green","-n","yellow","-H","1048576","-h","red"] 10 --Shows network usage. Use `ip link` to show device names.
+  , Run Weather "CYVR" ["-t","<tempC>C <skyCondition>" ] 18000
   , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
   ]
   , sepChar = "%"
   , alignSep = "}{"
-  , template = "%StdinReader% |  %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %multicoretemp% %thermal0% | %dynnetwork% | %battery% | %KSEA% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc> }{"
+  , template = "%StdinReader% }{ %multicpu% %top% | %memory% (%topmem%) | <icon=/home/nebu/.xmonad/diskette.xbm/> %disku% (%diskio%) | <icon=/home/nebu/.xmonad/temp.xbm/> %multicoretemp% | %dynnetwork% | %CYVR% | <icon=/home/nebu/.xmonad/clock.xbm/> <fc=#ee9a00>%date%</fc>"
 }
