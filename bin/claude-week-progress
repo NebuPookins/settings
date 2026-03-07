@@ -10,7 +10,12 @@ import sys
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-short = '--short' in sys.argv[1:]
+args = sys.argv[1:]
+short = '--short' in args
+until_pct = None
+if '--until' in args:
+    idx = args.index('--until')
+    until_pct = float(args[idx + 1].rstrip('%'))
 
 tz_name = subprocess.check_output(
     ['timedatectl', 'show', '-p', 'Timezone', '--value']
@@ -27,9 +32,20 @@ if last_reset > now:
     last_reset -= timedelta(weeks=1)
 
 next_reset = last_reset + timedelta(weeks=1)
-pct = (now - last_reset).total_seconds() / (7 * 24 * 3600) * 100
+week_secs = 7 * 24 * 3600
+pct = (now - last_reset).total_seconds() / week_secs * 100
 
-if short:
+if until_pct is not None:
+    target = last_reset + timedelta(seconds=until_pct / 100 * week_secs)
+    if target <= now:
+        print(f'Already past {until_pct:g}% (currently at {pct:.1f}%)')
+    else:
+        wait = target - now
+        h = int(wait.total_seconds() // 3600)
+        m = int((wait.total_seconds() % 3600) // 60)
+        target_str = target.strftime('%-d %b %-I:%M%p').replace('AM', 'am').replace('PM', 'pm')
+        print(f'{until_pct:g}% reached in {h}h {m}m (at {target_str} {tz_name})')
+elif short:
     print(f'{pct:.0f}%')
 else:
     time_left = next_reset - now
