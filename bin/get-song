@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import subprocess
 import json
 import os
+import subprocess
+import sys
+from urllib.parse import urlparse
 
 # Check if yt-dlp is installed
 def check_dependencies():
@@ -19,9 +21,36 @@ def get_search_results(query):
     print(f"Searching {query}...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print("Error fetching results from YouTube.")
+        error_output = result.stderr.strip() or result.stdout.strip() or "Unknown yt-dlp error."
+        print("Error fetching results from YouTube.", file=sys.stderr)
+        print(error_output, file=sys.stderr)
         exit(1)
-    return [json.loads(line) for line in result.stdout.strip().split("\n")]
+
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if not lines:
+        return []
+
+    try:
+        return [json.loads(line) for line in lines]
+    except json.JSONDecodeError:
+        print("yt-dlp returned malformed search results.", file=sys.stderr)
+        print(result.stdout.strip(), file=sys.stderr)
+        exit(1)
+
+def is_youtube_url(value):
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+
+    host = parsed.netloc.lower()
+    youtube_hosts = {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "www.youtu.be",
+    }
+    return host in youtube_hosts
 
 # Display options and use fzf to select
 def select_video(videos):
@@ -52,6 +81,10 @@ def main():
         print(f"Usage: {script_name} 'song name' [artist]")
         exit(1)
 
+    if is_youtube_url(query):
+        download_video({"webpage_url": query})
+        return
+
     # Fetch search results
     videos = get_search_results(query)
 
@@ -69,4 +102,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
