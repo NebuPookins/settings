@@ -5,14 +5,14 @@ import json
 import os
 import subprocess
 import sys
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 # Check if yt-dlp is installed
-def check_dependencies():
+def check_dependencies(needs_fzf=False):
     if subprocess.run(["which", "yt-dlp"], capture_output=True).returncode != 0:
         print("yt-dlp is not installed. Please install it first.")
         exit(1)
-    if subprocess.run(["which", "fzf"], capture_output=True).returncode != 0:
+    if needs_fzf and subprocess.run(["which", "fzf"], capture_output=True).returncode != 0:
         print("fzf is not installed. Please install it first.")
         exit(1)
 
@@ -66,10 +66,27 @@ def is_youtube_url(value):
         "youtube.com",
         "www.youtube.com",
         "m.youtube.com",
+        "music.youtube.com",
         "youtu.be",
         "www.youtu.be",
     }
     return host in youtube_hosts
+
+def is_youtube_playlist_url(value):
+    if not is_youtube_url(value):
+        return False
+
+    parsed = urlparse(value)
+    query = parse_qs(parsed.query)
+
+    if parsed.netloc.lower() in {"youtu.be", "www.youtu.be"}:
+        return "list" in query
+
+    if parsed.path == "/playlist":
+        return "list" in query
+
+    # Album/playlist links often arrive as /watch or /music URLs with a list id.
+    return "list" in query and parsed.path in {"/watch", "/watch/"}
 
 # Display options and use fzf to select
 def select_video(videos):
@@ -84,13 +101,14 @@ def select_video(videos):
     return None
 
 # Download the selected video
-def download_video(video, as_mp3=False):
+def download_video(video, as_mp3=False, playlist=False):
     print(f"Downloading from {video['webpage_url']} ...")
     cmd = ['yt-dlp']
     if as_mp3:
         cmd.extend(['-x', '--audio-format', 'mp3'])
     else:
         cmd.extend(['-f', 'bestaudio', '-x'])
+    cmd.append('--yes-playlist' if playlist else '--no-playlist')
     cmd.append(video['webpage_url'])
     subprocess.run(cmd)
 
@@ -110,14 +128,20 @@ def parse_args():
 
 # Main function
 def main():
-    check_dependencies()
     args = parse_args()
 
     # Get search query from command line arguments
     query = " ".join(args.query)
+    query_is_url = is_youtube_url(query)
 
-    if is_youtube_url(query):
-        download_video({"webpage_url": query}, as_mp3=args.mp3)
+    check_dependencies(needs_fzf=not query_is_url)
+
+    if query_is_url:
+        download_video(
+            {"webpage_url": query},
+            as_mp3=args.mp3,
+            playlist=is_youtube_playlist_url(query),
+        )
         return
 
     # Fetch search results
