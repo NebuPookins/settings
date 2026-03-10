@@ -15,9 +15,27 @@ def check_dependencies():
         print("fzf is not installed. Please install it first.")
         exit(1)
 
+def format_duration(video):
+    duration_string = video.get("duration_string")
+    if duration_string:
+        return duration_string
+
+    duration = video.get("duration")
+    if duration is None:
+        return "?:??"
+
+    total_seconds = int(round(float(duration)))
+    minutes, seconds = divmod(total_seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes}:{seconds:02d}"
+
 # Get search results from yt-dlp in JSON format
 def get_search_results(query):
-    cmd = ['yt-dlp', f'ytsearch5:{query}', '--dump-json']
+    # Flat extraction keeps search-result metadata we need, but skips the
+    # heavier per-entry resolution that makes plain ytsearch noticeably slower.
+    cmd = ['yt-dlp', f'ytsearch5:{query}', '--flat-playlist', '--dump-json']
     print(f"Searching {query}...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -54,7 +72,7 @@ def is_youtube_url(value):
 
 # Display options and use fzf to select
 def select_video(videos):
-    formatted_results = "\n".join([f"{video['title']} | {video['duration_string']}" for video in videos])
+    formatted_results = "\n".join([f"{video['title']} | {format_duration(video)}" for video in videos])
     fzf = subprocess.Popen(['fzf', '--height=10', '--border', '--ansi', '--prompt=Select a video to download: '], 
                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     selection, _ = fzf.communicate(input=formatted_results)
