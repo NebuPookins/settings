@@ -100,17 +100,55 @@ def select_video(videos):
         return videos[selected_index]
     return None
 
+def build_download_command(url, as_mp3=False, playlist=False, format_selector=None):
+    cmd = ['yt-dlp']
+    if format_selector:
+        cmd.extend(['-f', format_selector])
+    cmd.append('--yes-playlist' if playlist else '--no-playlist')
+    cmd.append('-x')
+    if as_mp3:
+        cmd.extend(['--audio-format', 'mp3'])
+    cmd.append(url)
+    return cmd
+
+def run_download_command(cmd):
+    result = subprocess.run(cmd, text=True, capture_output=True)
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    return result
+
 # Download the selected video
 def download_video(video, as_mp3=False, playlist=False):
     print(f"Downloading from {video['webpage_url']} ...")
-    cmd = ['yt-dlp']
-    if as_mp3:
-        cmd.extend(['-x', '--audio-format', 'mp3'])
-    else:
-        cmd.extend(['-f', 'bestaudio', '-x'])
-    cmd.append('--yes-playlist' if playlist else '--no-playlist')
-    cmd.append(video['webpage_url'])
-    subprocess.run(cmd)
+    url = video['webpage_url']
+    format_selectors = ['bestaudio', 'ba', 'best'] if not as_mp3 else ['bestaudio', 'ba/best', None]
+
+    for index, format_selector in enumerate(format_selectors):
+        result = run_download_command(
+            build_download_command(
+                url,
+                as_mp3=as_mp3,
+                playlist=playlist,
+                format_selector=format_selector,
+            )
+        )
+        if result.returncode == 0:
+            return
+
+        combined_output = f"{result.stdout}\n{result.stderr}"
+        if "Requested format is not available" not in combined_output:
+            sys.exit(result.returncode)
+
+        if index < len(format_selectors) - 1:
+            retry_selector = format_selectors[index + 1]
+            if retry_selector:
+                print(f"Retrying with format selector '{retry_selector}'...", file=sys.stderr)
+            else:
+                print("Retrying without an explicit format selector...", file=sys.stderr)
+
+    sys.exit(1)
 
 def parse_args():
     script_name = os.path.basename(os.sys.argv[0])
