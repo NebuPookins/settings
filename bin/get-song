@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
 import os
 import subprocess
@@ -83,24 +84,40 @@ def select_video(videos):
     return None
 
 # Download the selected video
-def download_video(video):
+def download_video(video, as_mp3=False):
     print(f"Downloading from {video['webpage_url']} ...")
-    subprocess.run(['yt-dlp', '-x', '--audio-format', 'mp3', video['webpage_url']])
+    cmd = ['yt-dlp']
+    if as_mp3:
+        cmd.extend(['-x', '--audio-format', 'mp3'])
+    else:
+        cmd.extend(['-f', 'bestaudio', '-x'])
+    cmd.append(video['webpage_url'])
+    subprocess.run(cmd)
+
+def parse_args():
+    script_name = os.path.basename(os.sys.argv[0])
+    parser = argparse.ArgumentParser(
+        prog=script_name,
+        description="Search YouTube and download audio.",
+    )
+    parser.add_argument(
+        '--mp3',
+        action='store_true',
+        help='convert the download to mp3 (slower)',
+    )
+    parser.add_argument('query', nargs='+', help="song name, artist, or YouTube URL")
+    return parser.parse_args()
 
 # Main function
 def main():
     check_dependencies()
+    args = parse_args()
 
     # Get search query from command line arguments
-    script_name = os.path.basename(os.sys.argv[0])
-    query = " ".join(os.sys.argv[1:])
-    
-    if not query:
-        print(f"Usage: {script_name} 'song name' [artist]")
-        exit(1)
+    query = " ".join(args.query)
 
     if is_youtube_url(query):
-        download_video({"webpage_url": query})
+        download_video({"webpage_url": query}, as_mp3=args.mp3)
         return
 
     # Fetch search results
@@ -114,7 +131,7 @@ def main():
     selected_video = select_video(videos)
 
     if selected_video:
-        download_video(selected_video)
+        download_video(selected_video, as_mp3=args.mp3)
     else:
         print("No video selected.")
 
