@@ -56,6 +56,10 @@ def get_search_results(query):
         print(result.stdout.strip(), file=sys.stderr)
         exit(1)
 
+def is_url(value):
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
 def is_youtube_url(value):
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"}:
@@ -170,7 +174,7 @@ def main():
 
     # Get search query from command line arguments
     query = " ".join(args.query)
-    query_is_url = is_youtube_url(query)
+    query_is_url = is_url(query)
 
     check_dependencies(needs_fzf=not query_is_url)
 
