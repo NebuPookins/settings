@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+discord &
+brave &
+# steam &
+moonlight &
+obsidian &
+code &
+subl &
+
+# For xfce4-terminals, no need for &, because it seems to return immediately and run in the background
+xfce4-terminal --working-directory=~/myPrograms/Typescript/Twitch-Collab-Scheduler/ --title="Stream Collab Scheduler" --execute fish -c "npm run build && npm run preview" &
+xfce4-terminal --working-directory=~/myPrograms/Typescript/nibblet2/ --title="Nibblet 2" --execute fish -c "bun run src/index.ts" &
+# xfce4-terminal --title="Syncthing" --execute fish -c "syncthing serve" &
+xfce4-terminal --working-directory=~/myPrograms/Rust/yumemi/ --title="Yumemi"  --execute fish -c "cargo run" &
+xfce4-terminal --working-directory=~/myPrograms/Typescript/sizzle/ --title="sizzle" --execute fish -c "npm run dev" &
+xfce4-terminal --working-directory=~/claude/thmp5/ --title="thmp5" --execute fish -c "npm run tauri dev" &
+xfce4-terminal --title="earlyoom-notify" --execute fish -c "earlyoom-notify.sh" &
