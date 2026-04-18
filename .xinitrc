@@ -40,12 +40,25 @@ fi
 # Run these programs on startup
 [ -x /usr/bin/dropboxd ] && dropboxd &
 [ -x /usr/bin/skype ] && skype &
-[ -x /usr/bin/keepass ] keepass &
-[ -x /usr/bin/pidgin ] pidgin &
-[ -x /usr/bin/xcompmgr ] xcompmgr -f -n &
+# [ -x /usr/bin/keepass ] && keepass &
+[ -x /usr/bin/pidgin ] && pidgin &
+[ -x /usr/bin/xcompmgr ] && xcompmgr -f -n &
 
 # Adds a cursor.
 xsetroot -cursor_name left_ptr
+
+# Fix monitor layouts
+fix-screens
+
+
+# Start ibus, which allows for alternative input methods (IMEs).
+# export GTK_IM_MODULE=ibus
+# export QT_IM_MODULE=ibus
+# export XMODIFIERS=@im=ibus
+# ibus-daemon -drxR
+
+# Use to show a password prompt when a GUI application needs root permissions
+[ -x /usr/bin/lxqt-policykit-agent ] && /usr/bin/lxqt-policykit-agent &
 
 case $1 in
 	# gnome)
@@ -57,9 +70,17 @@ case $1 in
 	xfce)
 		exec startxfce4
 		;;
+	i3)
+		exec i3
+		;;
+	kodi) # Media center thingy
+		exec kodi-standalone
+		;;
 	*)
-		# Set up trayer (for dropbox, skype, etc.) in top right corner.
-		trayer --edge top --align right --SetDockType true --SetPartialStrut true --expand true --width 6 --transparent true --alpha 0 --tint 0x000000 --height 16 &
+		# Set up trayer (for dropbox, skype, etc.) in top right corner. Height of 25 is trial and error to what matches xmobar.
+		# trayer --monitor "primary" --edge top --align right --SetDockType true --SetPartialStrut true --expand true --width 4 --transparent true --alpha 0.5 --tint 0x000000 --height 25 &
+		force_tint2_to_run.sh &
+		#~/bin/hourly_work_reminder.sh &
 		# Shows a volume icon
 		# volumeicon &
 		# # Activate screensaver
