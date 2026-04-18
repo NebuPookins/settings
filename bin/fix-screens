@@ -2,39 +2,65 @@
 
 # This is very specific to my hardware setup, exactly which physical monitors
 # I have and where they are positioned.
+#
+# Monitors are identified by their EDID model name so that port renumbering
+# (e.g. DP-2 vs DP-3) after cable swaps doesn't break anything.
 
-# This used to try to detect which port things appeared in, but in my new
-# setup, this is too complicated. Maybe I can revisit this sometime but for
-# now I'm hardcoding it.
+# Given a monitor model name substring, prints the xrandr output name it's
+# currently connected to (e.g. "DP-2"). Returns 1 if not found.
+find_output_by_name() {
+	local target="$1"
+	xrandr --props 2>/dev/null | awk -v target="$target" '
+	/^[A-Za-z].*connected/ { output=$1; in_edid=0; edid="" }
+	/EDID:/ { in_edid=1; edid=""; next }
+	in_edid && /^\t\t[0-9a-f]/ { gsub(/[\t ]/, ""); edid=edid $0; next }
+	in_edid && !/^\t\t[0-9a-f]/ {
+		in_edid=0
+		# Look for monitor name descriptor (tag fc)
+		for (i=1; i<=length(edid)-9; i+=2) {
+			tag = substr(edid, i, 10)
+			if (tag == "000000fc00") {
+				hex_name = substr(edid, i+10, 26)
+				name = ""
+				for (j=1; j<=length(hex_name)-1; j+=2) {
+					c = strtonum("0x" substr(hex_name, j, 2))
+					if (c == 10 || c == 0) break
+					name = name sprintf("%c", c)
+				}
+				if (index(name, target) > 0) {
+					print output
+					exit 0
+				}
+			}
+		}
+	}
+	END { exit 1 }
+	'
+}
 
-xrandr --output DisplayPort-1 --off
-sleep 0.1
-xrandr --output DisplayPort-1 --primary --mode 3440x1440
-# xrandr --output DisplayPort-0 --auto --left-of DisplayPort-1
-xrandr --output HDMI-A-0 --auto
-xrandr --output HDMI-A-0 --right-of DisplayPort-1
-xrandr --output HDMI-A-1 --auto
-xrandr --output HDMI-A-1 --left-of DisplayPort-1
-# xrandr --output DVI-D-0 --off
-xrandr --output DVI-D-0 --auto
-xrandr --output DVI-D-0 --above HDMI-A-1
+ULTRAWIDE=$(find_output_by_name "U3415W")
+RIGHT=$(find_output_by_name "SB220Q")
+LEFT=$(find_output_by_name "HP 27vx")
 
-exit
-
-DISPLAY_PORT=$(xrandr | grep "DisplayPort-[0-9] connected" | cut -d " " -f 1)
-echo "Detected DisplayPort is connected to: $DISPLAY_PORT"
-# if it's DisplayPort-0, then it's probably the UltraWide in PictureByPicture mode.
-
-xrandr --output $DISPLAY_PORT --off
-sleep 0.1 # TODO: figure out shortest reliable time 0 < ??? < 1
-if [[ $DISPLAY_PORT == "DisplayPort-0" ]]; then
-	echo "Probably in Picture-By-Picture mode; using narrower resolution."
-	# TODO
-	# xrandr --output $DISPLAY_PORT --primary --mode 1720x1440 --rate 60
-	xrandr --output $DISPLAY_PORT --primary --auto
-else
-	xrandr --output $DISPLAY_PORT --primary --auto
+if [[ -z "$ULTRAWIDE" ]]; then
+	echo "ERROR: Could not find DELL U3415W ultrawide" >&2
+	exit 1
 fi
-xrandr --output HDMI-A-0 --left-of $DISPLAY_PORT
-xrandr --output DVI-D-0 --above $DISPLAY_PORT
-timeout 0.1s random-wallpaper.sh
+
+echo "DELL U3415W (center/primary) -> $ULTRAWIDE"
+[[ -n "$RIGHT" ]] && echo "SB220Q (right)               -> $RIGHT"
+[[ -n "$LEFT" ]]  && echo "HP 27vx (left)               -> $LEFT"
+
+xrandr --output "$ULTRAWIDE" --off
+sleep 0.1
+xrandr --output "$ULTRAWIDE" --primary --mode 3440x1440
+
+if [[ -n "$RIGHT" ]]; then
+	xrandr --output "$RIGHT" --auto
+	xrandr --output "$RIGHT" --right-of "$ULTRAWIDE"
+fi
+
+if [[ -n "$LEFT" ]]; then
+	xrandr --output "$LEFT" --auto
+	xrandr --output "$LEFT" --left-of "$ULTRAWIDE"
+fi
