@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Show top memory-using processes. Pass a count as $1 (default 10).
+N="${1:-10}"
+COLS="${COLUMNS:-$(tput cols 2>/dev/null || echo 120)}"
+ps -eo pid,user,%mem,rss,comm,args --sort=-%mem | awk -v n="$N" -v cols="$COLS" '
+NR <= n+1 { rows[NR] = $0 }
+END {
+  # First pass: compute display values and column widths
+  w[1] = length("PID")
+  w[2] = length("USER")
+  w[3] = length("%MEM")
+  w[4] = length("RSS(MB)")
+  w[5] = length("PROGRAM")
+  nrows = length(rows)
+  for (i = 2; i <= nrows; i++) {
+    nf = split(rows[i], f)
+    d[i,1] = f[1]
+    d[i,2] = f[2]
+    d[i,3] = f[3]
+    d[i,4] = sprintf("%.1f", f[4]/1024)
+    d[i,5] = f[5]
+    cmd = ""
+    for (j = 6; j <= nf; j++) cmd = cmd (j > 6 ? " " : "") f[j]
+    d[i,6] = cmd
+    for (c = 1; c <= 5; c++)
+      if (length(d[i,c]) > w[c]) w[c] = length(d[i,c])
+  }
+
+  # Remaining width for COMMAND column
+  fixed = w[1] + w[2] + w[3] + w[4] + w[5] + 5  # 5 separating spaces
+  cmdw = cols - fixed
+  if (cmdw < 20) cmdw = 20
+
+  fmt = "%-" w[1] "s %-" w[2] "s %" w[3] "s %" w[4] "s %-" w[5] "s %s\n"
+  printf fmt, "PID", "USER", "%MEM", "RSS(MB)", "PROGRAM", "COMMAND"
+  for (i = 2; i <= nrows; i++) {
+    cmd = d[i,6]
+    if (length(cmd) > cmdw) cmd = substr(cmd, 1, cmdw - 1) "…"
+    printf fmt, d[i,1], d[i,2], d[i,3], d[i,4], d[i,5], cmd
+  }
+}
+'
