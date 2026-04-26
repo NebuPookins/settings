@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Prints how far through the Claude Pro weekly usage cycle we are.
-# Reset happens every Thursday at 11PM local time.
+# Reset happens every Sunday at 2AM local time.
 # Usage: claude-week-progress [--short]
 #   Default: "42.3% of week elapsed (39h 12m until reset)"
 #   --short:  "42%"
@@ -23,10 +23,10 @@ tz_name = subprocess.check_output(
 tz = ZoneInfo(tz_name)
 now = datetime.now(tz)
 
-# weekday(): 0=Monday, 3=Thursday
-days_since_thursday = (now.weekday() - 3) % 7
-last_reset = (now - timedelta(days=days_since_thursday)).replace(
-    hour=23, minute=0, second=0, microsecond=0
+# weekday(): 0=Monday, 6=Sunday
+days_since_sunday = (now.weekday() - 6) % 7
+last_reset = (now - timedelta(days=days_since_sunday)).replace(
+    hour=2, minute=0, second=0, microsecond=0
 )
 if last_reset > now:
     last_reset -= timedelta(weeks=1)
