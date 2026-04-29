@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""Temperature-aware rsync wrapper.
+
+Discovers all NVMe drives and monitors their temperatures while rsync runs.
+If any drive exceeds the pause threshold, rsync is frozen with SIGSTOP until
+all drives cool to the resume threshold, then continued with SIGCONT.
+"""
+
+import argparse
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def discover_nvme_temps() -> dict[str, Path]:
+    """Return {device_name: sysfs_temp_path} for every NVMe found."""
+    devices: dict[str, Path] = {}
+    nvme_root = Path("/sys/class/nvme")
+    if not nvme_root.exists():
+        return devices
+    for nvme_dir in sorted(nvme_root.glob("nvme*")):
+        dev = nvme_dir.name
+        # Direct hwmon child (most common)
+        for p in nvme_dir.glob("hwmon*/temp1_input"):
+            devices[dev] = p
+            break
+        else:
+            # Some kernels place it one level deeper
+            for p in nvme_dir.glob("device/hwmon*/temp1_input"):
+                devices[dev] = p
+                break
+    return devices
+
+
+def read_temps(devices: dict[str, Path]) -> dict[str, float]:
+    """Read current temperature (°C) for each device; skip unreadable ones."""
+    temps: dict[str, float] = {}
+    for dev, path in devices.items():
+        try:
+            temps[dev] = int(path.read_text().strip()) / 1000.0
+        except OSError:
+            pass
+    return temps
+
+
+def format_temp_line(temps: dict[str, float], pause_temp: float) -> str:
+    parts = []
+    for dev, t in sorted(temps.items()):
+        flag = " !!!" if t >= pause_temp else ""
+        parts.append(f"{dev}: {t:.1f}°C{flag}")
+    return "  ".join(parts)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Temperature-aware rsync: pauses when any NVMe runs hot.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--pause-temp", type=float, default=40.0,
+                        help="Pause rsync when any drive hits this temperature (°C)")
+    parser.add_argument("--resume-temp", type=float, default=37.0,
+                        help="Resume once ALL drives are at or below this temperature (°C)")
+    parser.add_argument("--interval", type=float, default=1.0,
+                        help="Temperature poll interval in seconds")
+    parser.add_argument("rsync_args", nargs=argparse.REMAINDER,
+                        help="Arguments passed directly to rsync")
+
+    args = parser.parse_args()
+
+    devices = discover_nvme_temps()
+    if not devices:
+        print("[thrsync] Error: no NVMe devices found in /sys/class/nvme — "
+              "cannot monitor temperature, aborting.")
+        sys.exit(1)
+    print(f"[thrsync] Monitoring: {', '.join(sorted(devices))}")
+
+    if not args.rsync_args:
+        temps = read_temps(devices)
+        if temps:
+            print("[thrsync] Current temperatures:")
+            for dev, t in sorted(temps.items()):
+                print(f"  {dev}: {t:.1f}°C")
+        else:
+            print("[thrsync] Could not read current temperatures.")
+        parser.print_help()
+        sys.exit(0)
+
+    rsync_args = args.rsync_args
+    if rsync_args and rsync_args[0] == "--":
+        rsync_args = rsync_args[1:]
+
+    cmd = ["rsync"] + rsync_args
+    print(f"[thrsync] Running:   {' '.join(cmd)}")
+    print(f"[thrsync] Pause ≥ {args.pause_temp}°C  |  Resume ≤ {args.resume_temp}°C  |  Poll every {args.interval}s")
+    print()
+
+    proc = subprocess.Popen(cmd)
+    paused = False
+
+    def cleanup(signum, frame):
+        print("\n[thrsync] Interrupted — terminating rsync.")
+        if paused:
+            proc.send_signal(signal.SIGCONT)
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, cleanup)
+    signal.signal(signal.SIGTERM, cleanup)
+
+    while proc.poll() is None:
+        time.sleep(args.interval)
+
+        temps = read_temps(devices)
+        if not temps:
+            continue
+
+        max_temp = max(temps.values())
+        temp_str = format_temp_line(temps, args.pause_temp)
+        ts = time.strftime("%H:%M:%S")
+
+        if not paused and max_temp >= args.pause_temp:
+            print(f"\n[thrsync] {ts} PAUSING — {temp_str}")
+            proc.send_signal(signal.SIGSTOP)
+            paused = True
+
+        elif paused and max_temp <= args.resume_temp:
+            print(f"\n[thrsync] {ts} RESUMING — {temp_str}")
+            proc.send_signal(signal.SIGCONT)
+            paused = False
+
+        else:
+            state = "PAUSED" if paused else "running"
+            print(f"\n[thrsync] {ts} [{state}]  {temp_str}")
+
+    if paused:
+        proc.send_signal(signal.SIGCONT)
+
+    exit_code = proc.wait()
+    if exit_code == 0:
+        print("[thrsync] rsync completed successfully.")
+    else:
+        print(f"[thrsync] rsync exited with code {exit_code}.")
+    sys.exit(exit_code)
+
+
+if __name__ == "__main__":
+    main()
