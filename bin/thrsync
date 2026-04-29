@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# MIT License — Copyright (c) 2026 Nebu Pookins
+# SPDX-License-Identifier: MIT
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
 """Temperature-aware rsync wrapper.
 
 Discovers all NVMe drives and monitors their temperatures while rsync runs.
