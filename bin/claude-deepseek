@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Check if current directory is named "RailBox"
+if [[ "$(basename "$PWD")" == "RailBox" ]]; then
+    echo "Error: Cannot run in a directory named 'RailBox'." >&2
+    exit 1
+fi
+
+# Check if any .env file exists in the current directory or any subdirectory
+#if find . -iname ".env" -type f -print -quit | grep -q .; then
+#    echo "Error: A '.env' file exists in the current or a child directory." >&2
+#    exit 1
+#fi
+
+# Configuration for DeepSeek models via Claude Code
+export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
+
+# The API key lives outside this repo so the script is safe to share. On first
+# run we prompt for it and store it in ~/.config; after that it's read from disk.
+KEY_FILE="${CLAUDE_DEEPSEEK_KEY_FILE:-$HOME/.config/claude-deepseek/api-key}"
+if [[ -s "$KEY_FILE" ]]; then
+    ANTHROPIC_AUTH_TOKEN="$(<"$KEY_FILE")"
+else
+    read -rsp "Enter your DeepSeek API key: " ANTHROPIC_AUTH_TOKEN
+    echo >&2
+    [[ -n "$ANTHROPIC_AUTH_TOKEN" ]] || {
+        echo "Error: no API key provided." >&2
+        exit 1
+    }
+    mkdir -p "$(dirname "$KEY_FILE")"
+    ( umask 077; printf '%s\n' "$ANTHROPIC_AUTH_TOKEN" >"$KEY_FILE" )
+    echo "Saved API key to $KEY_FILE" >&2
+fi
+export ANTHROPIC_AUTH_TOKEN
+
+# Main model — use deepseek-v4-pro for best quality.
+# Small/fast model handles cheap overhead like summarization — flash is ideal for that.
+export ANTHROPIC_MODEL="deepseek-v4-pro"
+export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
+
+# All-flash alternative (cheaper/faster, less capable):
+# export ANTHROPIC_MODEL="deepseek-v4-flash"
+# export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
+
+# Optional: Increase timeout for complex tasks
+export ANTHROPIC_TIMEOUT_SEC=300
+
+# Launch Claude Code with any passed arguments.
+# Override advisorModel to disable the advisor feature — DeepSeek's API
+# doesn't recognize the advisor_* server-side tools, which causes 400 errors.
+claude --settings '{"advisorModel":""}' "$@"
