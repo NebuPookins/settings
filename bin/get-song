@@ -94,14 +94,15 @@ def is_youtube_playlist_url(value):
 
 # Display options and use fzf to select
 def select_video(videos):
-    formatted_results = "\n".join([f"{video['title']} | {format_duration(video)}" for video in videos])
-    fzf = subprocess.Popen(['fzf', '--height=10', '--border', '--ansi', '--prompt=Select a video to download: '], 
+    lines = [f"{video['title']} | {format_duration(video)}" for video in videos]
+    fzf = subprocess.Popen(['fzf', '--height=10', '--border', '--ansi', '--prompt=Select a video to download: '],
                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
-    selection, _ = fzf.communicate(input=formatted_results)
+    selection, _ = fzf.communicate(input="\n".join(lines))
 
     if selection:
-        selected_index = [i for i, video in enumerate(videos) if video['title'] in selection][0]
-        return videos[selected_index]
+        selection = selection.rstrip("\n")
+        line_to_video = dict(zip(lines, videos))
+        return line_to_video.get(selection)
     return None
 
 def build_download_command(url, as_mp3=False, playlist=False, format_selector=None):
