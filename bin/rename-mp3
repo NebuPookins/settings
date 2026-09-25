@@ -156,34 +156,27 @@ files_here.each do |file|
     end
   end
 
-  new_name = nil
-
   if info[:max_disc] != nil && info[:max_disc] != "1"
     puts info
     raise "TODO: Implement multi-disc albums."
   end
-  if info[:album] && info[:track] && info[:artist] && info[:title]
-    if info[:max_track]
-      max_track = info[:max_track].to_i(base=10)
-      if max_track < 10
-        track_pad = 1
-      elsif 10 <= max_track && max_track < 100
-        track_pad = 2
-      elsif 100 <= max_track && max_track < 1000
-        track_pad = 3
-      else
-        raise "This has never happened in practice before: Max track is #{max_track}"
-      end
-    else
-      track_pad = 1
-    end
-    new_name = "#{info[:album]} (#{info[:track].rjust(track_pad, '0')}) #{info[:artist]} - #{info[:title]}.mp3"
+  unless info[:album] && info[:track] && info[:artist] && info[:title]
+    puts "Skipping #{file.colorize(:yellow)}: missing album, track, artist or title tag."
+    next
   end
-  if file != new_name
-    puts "Renaming from #{file.colorize(:red)}\n           to #{new_name.colorize(:green)}\n(y/n)?"
-    if STDIN.getch == 'y'
-      File.rename(file, new_name)
-    end
+  track_pad = info[:max_track] ? info[:max_track].to_i.to_s.length : 1
+  if track_pad > 3
+    raise "This has never happened in practice before: Max track is #{info[:max_track]}"
+  end
+  # Tags like "AC/DC" would otherwise be interpreted as a directory separator.
+  new_name = "#{info[:album]} (#{info[:track].rjust(track_pad, '0')}) #{info[:artist]} - #{info[:title]}.mp3".tr('/', '_')
+  next if file == new_name
+  if File.exist?(new_name)
+    puts "Skipping #{file.colorize(:yellow)}: #{new_name.colorize(:red)} already exists."
+    next
+  end
+  puts "Renaming from #{file.colorize(:red)}\n           to #{new_name.colorize(:green)}\n(y/n)?"
+  if STDIN.getch == 'y'
+    File.rename(file, new_name)
   end
 end
-
