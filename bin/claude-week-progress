@@ -8,7 +8,8 @@
 #
 # Usage: claude-week-progress [--short | --until N%]
 #   Default:    "42% of session left (resets in 1h23m) - Unsustainable week: 51% used, 43% elapsed (resets Sunday 2AM)"
-#   --short:    "42% (1h23m) - week OVER (Sun 2AM)"   (OVER = unsustainable pace, else OK)
+#   --short:    "42% (1h23m) - week OVER (4h41m)"   (OVER = unsustainable pace; the time is how
+#               long until the week has elapsed as far as you've used. When OK, shows the reset.)
 #   --color:    with --short, colour the session % green if the fraction left exceeds the
 #               fraction of the 5h window still to go (else red), and OK/OVER green/red
 #   --until N:  when N% of the current week will have elapsed
@@ -138,7 +139,13 @@ def main(args: list[str]) -> None:
             return f'{GREEN if good else RED}{text}{DEFAULT_FG}' if '--color' in args else text
 
         session_to_go_pct = (session_reset - now) / SESSION * 100 if session_reset else 0
-        week_when = fmt_weekly_reset(week_reset, '%a') if week_reset else 'idle'
+        if week_start is None:
+            week_when = 'idle'
+        elif sustainable:
+            week_when = fmt_weekly_reset(week_reset, '%a')
+        else:
+            # Elapsed time catches up with usage once now reaches this point in the week.
+            week_when = fmt_duration(week_start + WEEK * (week_used_pct / 100) - now)
         print(f'{paint(f"{session_left_pct:.0f}%", session_left_pct > session_to_go_pct)}{stale_mark} '
               f'({session_wait or "idle"}) - '
               f'week {paint("OK" if sustainable else "OVER", sustainable)} ({week_when})')
