@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Re-encode a video to the most widely-compatible format:
+# H.264 (yuv420p) video, AAC audio, MP4 container, faststart for web playback.
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "Usage: $0 <input_file> [output_file]"
+    exit 1
+fi
+
+file=$1
+output_file=${2:-"${file%.*}-compat.mp4"}
+
+if [ ! -f "$file" ]; then
+    echo "Error: Input file '$file' not found."
+    exit 1
+fi
+
+if ! command -v ffmpeg &> /dev/null; then
+    echo "Error: This script requires ffmpeg to be installed."
+    exit 1
+fi
+
+echo "Converting '$file' to '$output_file'..."
+
+ffmpeg -i "$file" \
+    -c:v libx264 \
+    -profile:v high \
+    -level:v 4.0 \
+    -pix_fmt yuv420p \
+    -crf 20 \
+    -preset slow \
+    -c:a aac \
+    -b:a 192k \
+    -movflags +faststart \
+    "$output_file"
+
+if [ $? -eq 0 ]; then
+    echo "Conversion complete: '$output_file'"
+else
+    echo "Error: Conversion failed."
+    exit 1
+fi
