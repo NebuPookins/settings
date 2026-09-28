@@ -1,189 +1,146 @@
-#!/usr/bin/env ruby
+#!/usr/bin/env python3
 
-require 'shellwords'
-require 'colorize'
-require 'io/console'
+import argparse
+import os
+import re
+import subprocess
+import sys
+import termios
+import tty
+from dataclasses import dataclass
 
-files_here = Dir.entries('.').filter {|name| name != '.' && name != '..'}
+RED = '\033[31m'
+GREEN = '\033[32m'
+RESET = '\033[0m'
 
-files_here.each do |file|
-  mpg123_output = %x{mpg123-id3dump #{Shellwords.escape(file)}}.lines.map { |line| line.strip }
-  info = {}
-  maybe_mutate_info = lambda {|tag, prefix, line|
-    if line.start_with? prefix
-      info[tag] = line.delete_prefix(prefix)
-      true
-    else
-      false
-    end
-  }
-  ignore = lambda {|prefix, line|
-    line.start_with? prefix
-  }
-  parse_state = :waiting_for_id3v1
-  id3v2raw_frame = nil
-  mpg123_output.each do |line|
-    if line == ''
-      next
-    end
-    case parse_state
-    when :waiting_for_id3v1
-      if line.start_with? '===='
-        case line
-        when '====      ID3v1       ===='
-          parse_state = :parsing_id3v1
-        when '====      ID3v2       ===='
-          parse_state = :parsing_id3v2
-        when '==== ID3v2 Raw frames ===='
-          parse_state = :parsing_id3v2_raw
-        else
-          raise "Unknown header type: #{line}"
-        end
-      else
-        #ignore the line
-      end
-    when :parsing_id3v1
-      if maybe_mutate_info.call(:title, 'Title: ', line)
-      elsif maybe_mutate_info.call(:artist, 'Artist: ', line)
-      elsif maybe_mutate_info.call(:album, 'Album: ', line)
-      elsif maybe_mutate_info.call(:year, 'Year: ', line)
-      elsif ignore.call('Comment:', line)
-      elsif ignore.call('Genre:', line)
-      elsif line == '====      ID3v2       ===='
-        parse_state = :parsing_id3v2
-      elsif line == '==== ID3v2 Raw frames ===='
-        parse_state = :parsing_id3v2_raw
-      else
-        raise "Unknown ID3v1 tag: #{line}"
-      end
-    when :parsing_id3v2
-      if maybe_mutate_info.call(:title, 'Title: ', line)
-      elsif maybe_mutate_info.call(:artist, 'Artist: ', line)
-      elsif maybe_mutate_info.call(:album, 'Album: ', line)
-      elsif maybe_mutate_info.call(:year, 'Year: ', line)
-      elsif ignore.call('Comment:', line)
-      elsif ignore.call('Genre:', line)
-      elsif line == '==== ID3v2 Raw frames ===='
-        parse_state = :parsing_id3v2_raw
-      else
-        raise "Unknown ID3v2 tag: #{line}"
-      end
-    when :parsing_id3v2_raw
-      # See https://id3.org/id3v2.4.0-frames for the defined frame types.
-      case id3v2raw_frame
-      when nil
-        match = /(....) language\(\)/.match(line)
-        if match
-          id3v2raw_frame = match[1].to_sym
-          next
-        end
-        match = /TXXX description\((.+)\)/.match(line)
-        if match
-          id3v2raw_frame = "TXXX_#{match[1]}".to_sym
-          next
-        end
-        raise "Unknown id3v2 raw frame: #{line}"
-      when :TIT2
-        info[:title] = line
-        id3v2raw_frame = nil
-      when :TPE1
-        info[:artist] = line
-        id3v2raw_frame = nil
-      when :TPE2, :TPE3, :TPE4, :TOPE
-        # Other performers. Ignore.
-        id3v2raw_frame = nil
-      when :TRCK
-        match = /([0-9]+)\/([0-9]+)/.match(line)
-        if match
-          info[:track] = match[1]
-          info[:max_track] = match[2]
-          id3v2raw_frame = nil
-          next
-        end
-        match = /([0-9]+)/.match(line)
-        if match
-          info[:track] = match[1]
-          id3v2raw_frame = nil
-          next
-        end
-        raise "Don't know how to parse track number: #{line}"
-      when :TALB
-        info[:album] = line
-        id3v2raw_frame = nil
-      when :TPOS
-        match = /([0-9]+)\/([0-9]+)/.match(line)
-        if match
-          info[:disc] = match[1]
-          info[:max_disc] = match[2]
-          id3v2raw_frame = nil
-          next
-        end
-        match = /([0-9]+)/.match(line)
-        if match
-          info[:disc] = match[1]
-          id3v2raw_frame = nil
-          next
-        end
-        raise "Don't know how to parse disc number: #{line}"
-      when :TLEN
-        # Length of track in milliseconds. Ignore.
-        id3v2raw_frame = nil
-      when :TMED
-        # Medium type, e.g. "CD". Ignore.
-        id3v2raw_frame = nil
-      when :TPUB
-        # Publisher. Ignore.
-        id3v2raw_frame = nil
-      when :TSOA, :TSOP, :TSOT
-        # Sort order for album, performer or title. Ignore.
-        id3v2raw_frame = nil
-      when :TSSE, :TENC
-        # Software or person that did the encoding. Ignore.
-        id3v2raw_frame = nil
-      when :TDAT, :TORY, :TYER, :TSO2
-        # Unknown. Ignore.
-        id3v2raw_frame = nil
-      when :TXXX_SCRIPT, :TXXX_ASIN, :TXXX_BARCODE, :TXXX_CATALOGNUMBER
-        # E.g. "Latin". Ignore.
-        id3v2raw_frame = nil
-      else
-        # By default, we should just ignore any frames we don't understand. During development, it's useful to error out on frames we don't understand, so we know what to implement next.
-        # raise "Unknown id3v2 raw frame: #{id3v2raw_frame}"
-        id3v2raw_frame = nil
-      end
-    else
-      raise "Unknown parse_state: #{parse_state}"
-    end
-  end
+RAW_FRAMES_SECTION = 'ID3v2 Raw frames'
 
-  new_name = nil
+# Summary lines look like "Title: Song". Other keys (Comment, Genre, Year, ...) are ignored.
+SUMMARY_FIELDS = {'Title': 'title', 'Artist': 'artist', 'Album': 'album'}
 
-  if info[:max_disc] != nil && info[:max_disc] != "1"
-    puts info
-    raise "TODO: Implement multi-disc albums."
-  end
-  if info[:album] && info[:track] && info[:artist] && info[:title]
-    if info[:max_track]
-      max_track = info[:max_track].to_i(base=10)
-      if max_track < 10
-        track_pad = 1
-      elsif 10 <= max_track && max_track < 100
-        track_pad = 2
-      elsif 100 <= max_track && max_track < 1000
-        track_pad = 3
-      else
-        raise "This has never happened in practice before: Max track is #{max_track}"
-      end
-    else
-      track_pad = 1
-    end
-    new_name = "#{info[:album]} (#{info[:track].rjust(track_pad, '0')}) #{info[:artist]} - #{info[:title]}.mp3"
-  end
-  if file != new_name
-    puts "Renaming from #{file.colorize(:red)}\n           to #{new_name.colorize(:green)}\n(y/n)?"
-    if STDIN.getch == 'y'
-      File.rename(file, new_name)
-    end
-  end
-end
+# See https://id3.org/id3v2.4.0-frames for the defined frame types. All other frames are ignored.
+TEXT_FRAMES = {'TIT2': 'title', 'TPE1': 'artist', 'TALB': 'album'}
+NUMBERED_FRAMES = {'TRCK': 'track', 'TPOS': 'disc'}  # Values look like "7" or "7/12".
 
+
+@dataclass(frozen=True)
+class Tags:
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    track: int | None = None
+    max_track: int | None = None
+    disc: int | None = None
+    max_disc: int | None = None
+
+
+@dataclass(frozen=True)
+class Skip:
+    reason: str
+
+
+def getch():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        return sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+def split_sections(output):
+    """Splits mpg123-id3dump output into {section name: section text}, e.g. {'ID3v1': 'Title: Song\\n...'}."""
+    parts = re.split(r'^====\s*(.+?)\s*====$', output, flags=re.M)
+    return dict(zip(parts[1::2], parts[2::2]))
+
+
+def parse_summary(text):
+    matches = (re.fullmatch(r'(\w+):\s*(.*?)\s*', line) for line in text.splitlines())
+    return {SUMMARY_FIELDS[m[1]]: m[2] for m in matches if m and m[1] in SUMMARY_FIELDS and m[2]}
+
+
+def parse_numbered(frame_name, value):
+    match = re.search(r'(\d+)(?:/(\d+))?', value)
+    if not match:
+        return {}
+    numbers = {frame_name: int(match[1]), f'max_{frame_name}': match[2] and int(match[2])}
+    return {key: number for key, number in numbers.items() if number is not None}
+
+
+def parse_raw_frames(text):
+    """Frame headers (e.g. "TIT2 language()" or "COMM description() language(eng):") start at column 0,
+    and each line of the frame's value is indented by a space. Frames with empty values have no value
+    lines, so they never match. Only the first value line is used; later lines only occur in multi-line
+    frames like comments and lyrics, which are ignored."""
+    frames = re.findall(r'^([A-Z0-9]{4})\b.*\n (.*)', text, flags=re.M)
+    return {key: parsed
+            for frame_id, value in frames
+            for key, parsed in parse_raw_frame(frame_id, value.strip()).items()}
+
+
+def parse_raw_frame(frame_id, value):
+    if frame_id in TEXT_FRAMES:
+        return {TEXT_FRAMES[frame_id]: value}
+    if frame_id in NUMBERED_FRAMES:
+        return parse_numbered(NUMBERED_FRAMES[frame_id], value)
+    return {}
+
+
+def parse_id3dump(output):
+    """Raw ID3v2 frames take precedence over the ID3v1/ID3v2 summaries, which are the only source for
+    ID3v1-only files."""
+    sections = split_sections(output)
+    summaries = {key: value
+                 for name, text in sections.items() if name != RAW_FRAMES_SECTION
+                 for key, value in parse_summary(text).items()}
+    raw = parse_raw_frames(sections.get(RAW_FRAMES_SECTION, ''))
+    return Tags(**{**summaries, **raw})
+
+
+def safe_for_filename(name):
+    return name.replace('/', '_')
+
+
+def new_name_for(tags):
+    if tags.max_disc not in (None, 1):
+        return Skip(f'multi-disc albums are not implemented yet ({tags})')
+    if tags.artist is None or tags.title is None:
+        return Skip('missing artist/title tags')
+    if tags.album is None or tags.track is None:
+        return safe_for_filename(f'{tags.artist} - {tags.title}') + '.mp3'
+    width = len(str(tags.max_track)) if tags.max_track is not None else 1
+    return safe_for_filename(f'{tags.album} ({tags.track:0{width}d}) {tags.artist} - {tags.title}') + '.mp3'
+
+
+def rename_interactively(path):
+    directory, file = os.path.split(path)
+    # --no-scan skips reading the audio frames; tags are at the start and end of the file.
+    output = subprocess.run(['mpg123-id3dump', '--no-scan', path], capture_output=True, text=True).stdout
+    match new_name_for(parse_id3dump(output)):
+        case Skip(reason):
+            print(f'Skipping {RED}{path}{RESET}: {reason}')
+        case new_name if new_name != file:
+            target = os.path.join(directory, new_name)
+            if os.path.exists(target):
+                # os.rename would silently replace it, e.g. a single and an album copy of the same song.
+                print(f'Skipping {RED}{path}{RESET}: {GREEN}{new_name}{RESET} already exists')
+                return
+            print(f'Renaming from {RED}{file}{RESET}\n           to {GREEN}{new_name}{RESET}\n(y/n)?')
+            if getch() == 'y':
+                os.rename(path, target)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Rename MP3 files to "Album (Track) Artist - Title.mp3" based on their ID3 tags.')
+    parser.add_argument('files', nargs='*',
+                        help='files to rename (default: every .mp3 file in the current directory)')
+    args = parser.parse_args()
+    for path in args.files or sorted(
+            name for name in os.listdir('.') if name.lower().endswith('.mp3') and os.path.isfile(name)):
+        rename_interactively(path)
+
+
+if __name__ == '__main__':
+    main()
