@@ -33,10 +33,12 @@ def format_duration(video):
     return f"{minutes}:{seconds:02d}"
 
 # Get search results from yt-dlp in JSON format
-def get_search_results(query):
+def get_search_results(query, cookies_from_browser=None):
     # Flat extraction keeps search-result metadata we need, but skips the
     # heavier per-entry resolution that makes plain ytsearch noticeably slower.
     cmd = ['yt-dlp', f'ytsearch5:{query}', '--flat-playlist', '--dump-json']
+    if cookies_from_browser:
+        cmd.extend(['--cookies-from-browser', cookies_from_browser])
     print(f"Searching {query}...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -104,10 +106,12 @@ def select_video(videos):
         return videos[selected_index]
     return None
 
-def build_download_command(url, as_mp3=False, playlist=False, format_selector=None):
+def build_download_command(url, as_mp3=False, playlist=False, format_selector=None, cookies_from_browser=None):
     cmd = ['yt-dlp']
     if format_selector:
         cmd.extend(['-f', format_selector])
+    if cookies_from_browser:
+        cmd.extend(['--cookies-from-browser', cookies_from_browser])
     cmd.append('--yes-playlist' if playlist else '--no-playlist')
     cmd.append('-x')
     if as_mp3:
@@ -124,7 +128,7 @@ def run_download_command(cmd):
     return result
 
 # Download the selected video
-def download_video(video, as_mp3=False, playlist=False):
+def download_video(video, as_mp3=False, playlist=False, cookies_from_browser=None):
     print(f"Downloading from {video['webpage_url']} ...")
     url = video['webpage_url']
     format_selectors = ['bestaudio', 'ba', 'best'] if not as_mp3 else ['bestaudio', 'ba/best', None]
@@ -136,6 +140,7 @@ def download_video(video, as_mp3=False, playlist=False):
                 as_mp3=as_mp3,
                 playlist=playlist,
                 format_selector=format_selector,
+                cookies_from_browser=cookies_from_browser,
             )
         )
         if result.returncode == 0:
@@ -165,6 +170,18 @@ def parse_args():
         action='store_true',
         help='convert the download to mp3 (slower)',
     )
+    parser.add_argument(
+        '--cookies-from-browser',
+        default='brave',
+        metavar='BROWSER',
+        help="browser to pull cookies from, in yt-dlp's BROWSER[+KEYRING][:PROFILE][::CONTAINER] "
+             "syntax (default: brave)",
+    )
+    parser.add_argument(
+        '--no-cookies',
+        action='store_true',
+        help='do not pass any cookies to yt-dlp',
+    )
     parser.add_argument('query', nargs='+', help="song name, artist, or YouTube URL")
     return parser.parse_args()
 
@@ -175,6 +192,7 @@ def main():
     # Get search query from command line arguments
     query = " ".join(args.query)
     query_is_url = is_url(query)
+    cookies_from_browser = None if args.no_cookies else args.cookies_from_browser
 
     check_dependencies(needs_fzf=not query_is_url)
 
@@ -183,11 +201,12 @@ def main():
             {"webpage_url": query},
             as_mp3=args.mp3,
             playlist=is_youtube_playlist_url(query),
+            cookies_from_browser=cookies_from_browser,
         )
         return
 
     # Fetch search results
-    videos = get_search_results(query)
+    videos = get_search_results(query, cookies_from_browser=cookies_from_browser)
 
     if not videos:
         print(f"No results found for '{query}'")
@@ -197,7 +216,7 @@ def main():
     selected_video = select_video(videos)
 
     if selected_video:
-        download_video(selected_video, as_mp3=args.mp3)
+        download_video(selected_video, as_mp3=args.mp3, cookies_from_browser=cookies_from_browser)
     else:
         print("No video selected.")
 
