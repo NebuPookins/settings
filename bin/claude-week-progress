@@ -1,55 +1,158 @@
 #!/usr/bin/env python3
-# Prints how far through the Claude Pro weekly usage cycle we are.
-# Reset happens every Sunday at 2AM local time.
-# Usage: claude-week-progress [--short]
-#   Default: "42.3% of week elapsed (39h 12m until reset)"
-#   --short:  "42%"
+# Reports Claude subscription usage using the same endpoint Claude Code's /usage
+# command uses (GET https://api.anthropic.com/api/oauth/usage), authenticated with
+# the OAuth token Claude Code keeps in ~/.claude/.credentials.json.
+#
+# The API response is cached for CACHE_TTL seconds; the output is recomputed from
+# the cached reset timestamps on every call, so countdowns stay accurate.
+#
+# Usage: claude-week-progress [--short | --until N%]
+#   Default:    "42% of session left (resets in 1h23m) - Unsustainable week: 51% used, 43% elapsed (resets Sunday 2AM)"
+#   --short:    "42% (1h23m) - week OVER (Sun 2AM)"   (OVER = unsustainable pace, else OK)
+#   --color:    with --short, colour the session % green if the fraction left exceeds the
+#               fraction of the 5h window still to go (else red), and OK/OVER green/red
+#   --until N:  when N% of the current week will have elapsed
+# A "?" after the session percentage means the API call failed and stale data is shown.
 
-import subprocess
+import json
+import os
 import sys
+import time
+import urllib.request
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from pathlib import Path
 
-args = sys.argv[1:]
-short = '--short' in args
-until_pct = None
-if '--until' in args:
-    idx = args.index('--until')
-    until_pct = float(args[idx + 1].rstrip('%'))
+CREDENTIALS = Path.home() / '.claude' / '.credentials.json'
+CACHE = Path('/tmp/claude-usage-cache.json')
+CACHE_TTL = 300  # seconds; also how long to wait before retrying a failed fetch
+FETCH_FAILED_MARKER = Path('/tmp/claude-usage-fetch-failed')
+USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
+WEEK = timedelta(weeks=1)
+SESSION = timedelta(hours=5)
+GREEN, RED, DEFAULT_FG = '\033[32m', '\033[31m', '\033[39m'
 
-tz_name = subprocess.check_output(
-    ['timedatectl', 'show', '-p', 'Timezone', '--value']
-).decode().strip()
-tz = ZoneInfo(tz_name)
-now = datetime.now(tz)
 
-# weekday(): 0=Monday, 6=Sunday
-days_since_sunday = (now.weekday() - 6) % 7
-last_reset = (now - timedelta(days=days_since_sunday)).replace(
-    hour=2, minute=0, second=0, microsecond=0
-)
-if last_reset > now:
-    last_reset -= timedelta(weeks=1)
+def fetch_usage() -> dict:
+    token = json.loads(CREDENTIALS.read_text())['claudeAiOauth']['accessToken']
+    req = urllib.request.Request(USAGE_URL, headers={
+        'Authorization': f'Bearer {token}',
+        'anthropic-beta': 'oauth-2025-04-20',
+    })
+    with urllib.request.urlopen(req, timeout=3) as resp:
+        return json.load(resp)
 
-next_reset = last_reset + timedelta(weeks=1)
-week_secs = 7 * 24 * 3600
-pct = (now - last_reset).total_seconds() / week_secs * 100
 
-if until_pct is not None:
-    target = last_reset + timedelta(seconds=until_pct / 100 * week_secs)
-    if target <= now:
-        print(f'Already past {until_pct:g}% (currently at {pct:.1f}%)')
+def age(path: Path) -> float | None:
+    try:
+        return time.time() - path.stat().st_mtime
+    except FileNotFoundError:
+        return None
+
+
+def stale_usage() -> tuple[dict | None, bool]:
+    return (json.loads(CACHE.read_text()) if CACHE.exists() else None), True
+
+
+def write_atomically(path: Path, text: str) -> None:
+    """Other terminals' prompts may read the file concurrently, so never expose a partial write."""
+    tmp = path.with_name(f'{path.name}.{os.getpid()}.tmp')
+    tmp.write_text(text)
+    tmp.replace(path)
+
+
+def cached_usage() -> tuple[dict | None, bool]:
+    """Returns (usage, is_stale). Falls back to a stale cache if the fetch fails."""
+    cache_age = age(CACHE)
+    if cache_age is not None and cache_age < CACHE_TTL:
+        return json.loads(CACHE.read_text()), False
+    failure_age = age(FETCH_FAILED_MARKER)
+    if failure_age is not None and failure_age < CACHE_TTL:
+        # A fetch failed recently; don't retry (and possibly stall the prompt) on every call.
+        return stale_usage()
+    try:
+        usage = fetch_usage()
+    except Exception:
+        # Expired token (Claude Code hasn't run recently), offline, etc.
+        FETCH_FAILED_MARKER.touch()
+        return stale_usage()
+    write_atomically(CACHE, json.dumps(usage))
+    FETCH_FAILED_MARKER.unlink(missing_ok=True)
+    return usage, False
+
+
+def active_reset(bucket: dict, now: datetime) -> datetime | None:
+    """When the bucket's current window resets, or None if no window is running.
+
+    resets_at is null when the bucket has been idle since its last window ended, and
+    a cached resets_at may already be in the past. Either way the bucket is full.
+    """
+    if bucket['resets_at'] is None:
+        return None
+    # resets_at is e.g. 01:59:59.86; round to the nearest minute so it reads as 2AM.
+    exact = datetime.fromisoformat(bucket['resets_at']).astimezone()
+    rounded = (exact + timedelta(seconds=30)).replace(second=0, microsecond=0)
+    return rounded if rounded > now else None
+
+
+def fmt_duration(delta: timedelta) -> str:
+    total_mins = max(0, int(delta.total_seconds() // 60))
+    return f'{total_mins // 60}h{total_mins % 60:02d}m'
+
+
+def fmt_weekly_reset(when: datetime, day_fmt: str = '%A') -> str:
+    time_str = when.strftime('%-I%p') if when.minute == 0 else when.strftime('%-I:%M%p')
+    return f'{when.strftime(day_fmt)} {time_str}'
+
+
+def main(args: list[str]) -> None:
+    usage, stale = cached_usage()
+    if usage is None or not usage.get('five_hour') or not usage.get('seven_day'):
+        print('usage unavailable')
+        return
+
+    now = datetime.now().astimezone()
+    session_reset = active_reset(usage['five_hour'], now)
+    week_reset = active_reset(usage['seven_day'], now)
+    week_start = week_reset - WEEK if week_reset else None
+
+    if '--until' in args:
+        if week_start is None:
+            print('No weekly window running (it starts with your next use of Claude)')
+            return
+        until_pct = float(args[args.index('--until') + 1].rstrip('%'))
+        target = week_start + WEEK * (until_pct / 100)
+        week_elapsed_pct = (now - week_start) / WEEK * 100
+        print(f'Already past {until_pct:g}% (currently at {week_elapsed_pct:.1f}%)' if target <= now
+              else f'{until_pct:g}% reached in {fmt_duration(target - now)} (at {target:%-d %b %-I:%M%p %Z})')
+        return
+
+    stale_mark = '?' if stale else ''
+    session_left_pct = 100 - usage['five_hour']['utilization'] if session_reset else 100
+    session_wait = fmt_duration(session_reset - now) if session_reset else None
+    week_used_pct = usage['seven_day']['utilization'] if week_reset else 0
+    week_elapsed_pct = (now - week_start) / WEEK * 100 if week_start else 0
+    sustainable = week_used_pct <= week_elapsed_pct
+
+    if '--short' in args:
+        def paint(text: str, good: bool) -> str:
+            return f'{GREEN if good else RED}{text}{DEFAULT_FG}' if '--color' in args else text
+
+        session_to_go_pct = (session_reset - now) / SESSION * 100 if session_reset else 0
+        week_when = fmt_weekly_reset(week_reset, '%a') if week_reset else 'idle'
+        print(f'{paint(f"{session_left_pct:.0f}%", session_left_pct > session_to_go_pct)}{stale_mark} '
+              f'({session_wait or "idle"}) - '
+              f'week {paint("OK" if sustainable else "OVER", sustainable)} ({week_when})')
     else:
-        wait = target - now
-        h = int(wait.total_seconds() // 3600)
-        m = int((wait.total_seconds() % 3600) // 60)
-        target_str = target.strftime('%-d %b %-I:%M%p').replace('AM', 'am').replace('PM', 'pm')
-        print(f'{until_pct:g}% reached in {h}h {m}m (at {target_str} {tz_name})')
-elif short:
-    print(f'{pct:.0f}%')
-else:
-    time_left = next_reset - now
-    h = int(time_left.total_seconds() // 3600)
-    m = int((time_left.total_seconds() % 3600) // 60)
-    reset_str = next_reset.strftime('%-d %b, %-I%p').replace('AM', 'am').replace('PM', 'pm')
-    print(f'{pct:.1f}% of week elapsed ({h}h {m}m until reset — {reset_str} {tz_name})')
+        session_str = f'resets in {session_wait}' if session_wait else 'no window running'
+        week_str = (f'{week_used_pct:.0f}% used, {week_elapsed_pct:.0f}% elapsed '
+                    f'(resets {fmt_weekly_reset(week_reset)})' if week_reset else 'no window running')
+        print(f'{session_left_pct:.0f}%{stale_mark} of session left ({session_str}) - '
+              f'{"Sustainable" if sustainable else "Unsustainable"} week: {week_str}')
+
+
+if __name__ == '__main__':
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        # This runs on every prompt; show a one-word error rather than a traceback.
+        print(f'error: {type(e).__name__}')
