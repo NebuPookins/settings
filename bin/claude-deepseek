@@ -33,14 +33,22 @@ else
 fi
 export ANTHROPIC_AUTH_TOKEN
 
-# Main model — use deepseek-v4-pro for best quality.
-# Small/fast model handles cheap overhead like summarization — flash is ideal for that.
+# Main model — deepseek-v4-pro for best quality. Per DeepSeek's docs there is no
+# v4.1-pro; the pro tier is still served by DeepSeek-V4-Pro-0813.
+# Small/fast model handles cheap overhead like summarization — "deepseek-flash" is
+# the canonical name for the current flash model (DeepSeek-V4.1-Flash under the hood;
+# the old "deepseek-v4-flash" name is a retired alias that routes to the same model).
 export ANTHROPIC_MODEL="deepseek-v4-pro"
-export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
+export ANTHROPIC_SMALL_FAST_MODEL="deepseek-flash"
 
 # All-flash alternative (cheaper/faster, less capable):
-# export ANTHROPIC_MODEL="deepseek-v4-flash"
-# export ANTHROPIC_SMALL_FAST_MODEL="deepseek-v4-flash"
+# export ANTHROPIC_MODEL="deepseek-flash"
+# export ANTHROPIC_SMALL_FAST_MODEL="deepseek-flash"
+
+# To check the current list of valid model IDs for this account:
+#   curl -sL -X GET 'https://api.deepseek.com/models' \
+#     -H 'Accept: application/json' \
+#     -H "Authorization: Bearer $(<"$HOME/.config/claude-deepseek/api-key")"
 
 # Optional: Increase timeout for complex tasks
 export ANTHROPIC_TIMEOUT_SEC=300
