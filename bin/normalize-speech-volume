@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $(basename "$0") <input-audio-file>"
+    exit 1
+fi
+
+input="$1"
+
+if [[ ! -f "$input" ]]; then
+    echo "Error: file not found: $input"
+    exit 1
+fi
+
+dir="$(dirname "$input")"
+filename="$(basename "$input")"
+
+extension="${filename##*.}"
+basename_no_ext="${filename%.*}"
+
+candidate="${dir}/${basename_no_ext}-norm.${extension}"
+counter=1
+
+while [[ -e "$candidate" ]]; do
+    candidate="${dir}/${basename_no_ext}-norm-${counter}.${extension}"
+    ((counter++))
+done
+
+echo "Input:  $input"
+echo "Output: $candidate"
+
+ffmpeg -i "$input" \
+    -af "dynaudnorm=f=200:g=15" \
+    "$candidate"
