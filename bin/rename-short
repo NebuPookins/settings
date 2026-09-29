@@ -17,16 +17,18 @@ def getRandomLetter()
   rand(36).to_s(36)
 end
 
-def makeARandomUnusedName(base_name, extension)
+# Candidate names are checked in `directory`, where the file will be renamed to.
+def makeARandomUnusedName(directory, base_name, extension)
   tentative_base_name = base_name + getRandomLetter()
-  tentative_name = tentative_base_name + extension
-  if File.exists?(tentative_name)
-    makeARandomUnusedName(tentative_base_name, extension)
+  tentative_name = File.join(directory, tentative_base_name + extension)
+  if File.exist?(tentative_name)
+    makeARandomUnusedName(directory, tentative_base_name, extension)
   else
     tentative_name
   end
 end
 
-new_name = makeARandomUnusedName('', File.extname(ARGV[0]))
+# Keep the file in its own directory rather than moving it into the current one.
+new_name = makeARandomUnusedName(File.dirname(ARGV[0]), '', File.extname(ARGV[0]))
 puts "Renaming #{ARGV[0]} to #{new_name}"
 File.rename(ARGV[0], new_name)
