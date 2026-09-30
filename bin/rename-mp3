@@ -49,6 +49,17 @@ def getch():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
+def decode_lines(data):
+    """Decodes each line as UTF-8, falling back to Latin-1 (the usual encoding of ID3v1 tags), since a single
+    dump can mix both and Latin-1 can decode any byte."""
+    def decode(line):
+        try:
+            return line.decode('utf-8')
+        except UnicodeDecodeError:
+            return line.decode('latin-1')
+    return '\n'.join(decode(line) for line in data.splitlines())
+
+
 def split_sections(output):
     """Splits mpg123-id3dump output into {section name: section text}, e.g. {'ID3v1': 'Title: Song\\n...'}."""
     parts = re.split(r'^====\s*(.+?)\s*====$', output, flags=re.M)
@@ -102,21 +113,36 @@ def safe_for_filename(name):
     return name.replace('/', '_')
 
 
+def is_multi_disc(tags):
+    return max(tags.max_disc or 1, tags.disc or 1) > 1
+
+
+def padded(number, max_number):
+    width = len(str(max_number)) if max_number is not None else 1
+    return f'{number:0{width}d}'
+
+
+def track_label(tags):
+    """"7" for single-disc albums, "2-07" (disc-track) for multi-disc albums."""
+    track = padded(tags.track, tags.max_track)
+    return f'{padded(tags.disc, tags.max_disc)}-{track}' if is_multi_disc(tags) else track
+
+
 def new_name_for(tags):
-    if tags.max_disc not in (None, 1):
-        return Skip(f'multi-disc albums are not implemented yet ({tags})')
     if tags.artist is None or tags.title is None:
         return Skip('missing artist/title tags')
     if tags.album is None or tags.track is None:
         return safe_for_filename(f'{tags.artist} - {tags.title}') + '.mp3'
-    width = len(str(tags.max_track)) if tags.max_track is not None else 1
-    return safe_for_filename(f'{tags.album} ({tags.track:0{width}d}) {tags.artist} - {tags.title}') + '.mp3'
+    if is_multi_disc(tags) and tags.disc is None:
+        return Skip('multi-disc album but the disc number tag is missing')
+    return safe_for_filename(f'{tags.album} ({track_label(tags)}) {tags.artist} - {tags.title}') + '.mp3'
 
 
 def rename_interactively(path):
     directory, file = os.path.split(path)
     # --no-scan skips reading the audio frames; tags are at the start and end of the file.
-    output = subprocess.run(['mpg123-id3dump', '--no-scan', path], capture_output=True, text=True).stdout
+    raw_output = subprocess.run(['mpg123-id3dump', '--no-scan', path], capture_output=True).stdout
+    output = decode_lines(raw_output)
     match new_name_for(parse_id3dump(output)):
         case Skip(reason):
             print(f'Skipping {RED}{path}{RESET}: {reason}')
