@@ -9,6 +9,11 @@ fi
 file=$1
 target_size_mb=$2  # target size in MB
 
+if ! [[ "$target_size_mb" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: target size must be a positive whole number of MB, got '$target_size_mb'."
+    exit 1
+fi
+
 # Check if input file exists
 if [ ! -f "$file" ]; then
     echo "Error: Input file '$file' not found."
@@ -22,16 +27,30 @@ if ! command -v ffmpeg &> /dev/null || ! command -v ffprobe &> /dev/null; then
 fi
 
 # Convert target size to bits
-target_size=$(( target_size_mb * 1000 * 1000 * 8 )) # target size in bits
+bits_per_mb=$(( 1000 * 1000 * 8 ))
+target_size=$(( target_size_mb * bits_per_mb )) # target size in bits
 
 # Get video length
 length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$file")
+if ! [[ "$length" =~ ^[0-9]+(\.[0-9]*)?$ ]]; then
+    echo "Error: Could not determine the duration of '$file' (ffprobe reported '$length')."
+    exit 1
+fi
 length_round_up=$(( ${length%.*} + 1 ))
 
 # Calculate bitrates
 total_bitrate=$(( target_size / length_round_up ))
 audio_bitrate=$(( 128 * 1000 )) # 128k bit rate
 video_bitrate=$(( total_bitrate - audio_bitrate ))
+
+# Below this the video is unwatchable (or, at <= 0, rejected outright by ffmpeg).
+min_video_bitrate=$(( 64 * 1000 ))
+if [ $video_bitrate -lt $min_video_bitrate ]; then
+    min_bits=$(( (audio_bitrate + min_video_bitrate) * length_round_up ))
+    min_size_mb=$(( (min_bits + bits_per_mb - 1) / bits_per_mb )) # round up
+    echo "Error: ${target_size_mb} MB is too small for a ${length_round_up}s video. Try at least ${min_size_mb} MB."
+    exit 1
+fi
 
 # Create output filename
 output_file="${file%.*}-${target_size_mb}mb.mp4"
