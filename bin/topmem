@@ -2,8 +2,13 @@
 # Show top memory-using processes. Pass a count as $1 (default 10).
 N="${1:-10}"
 COLS="${COLUMNS:-$(tput cols 2>/dev/null || echo 120)}"
-ps -eo pid,user,%mem,rss,comm,args --sort=-%mem | awk -v n="$N" -v cols="$COLS" '
-NR <= n+1 { rows[NR] = $0 }
+# comm (the kernel's process name) may contain spaces, e.g. Firefox's
+# "Isolated Web Co", so it can't be split out of a whitespace-delimited row.
+# Read it from a separate listing where it is the whole rest of the line, and
+# join on PID.
+awk -v n="$N" -v cols="$COLS" '
+NR == FNR { pid = $1; sub(/^ *[0-9]+ /, ""); progs[pid] = $0; next }
+FNR <= n+1 { rows[FNR] = $0 }
 END {
   # First pass: compute display values and column widths
   w[1] = length("PID")
@@ -18,9 +23,9 @@ END {
     d[i,2] = f[2]
     d[i,3] = f[3]
     d[i,4] = sprintf("%.1f", f[4]/1024)
-    d[i,5] = f[5]
+    d[i,5] = progs[f[1]]
     cmd = ""
-    for (j = 6; j <= nf; j++) cmd = cmd (j > 6 ? " " : "") f[j]
+    for (j = 5; j <= nf; j++) cmd = cmd (j > 5 ? " " : "") f[j]
     d[i,6] = cmd
     for (c = 1; c <= 5; c++)
       if (length(d[i,c]) > w[c]) w[c] = length(d[i,c])
@@ -39,4 +44,4 @@ END {
     printf fmt, d[i,1], d[i,2], d[i,3], d[i,4], d[i,5], cmd
   }
 }
-'
+' <(ps -eo pid=,comm=) <(ps -eo pid,user,%mem,rss,args --sort=-%mem)
