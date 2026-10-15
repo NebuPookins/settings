@@ -10,6 +10,7 @@ all drives cool to the resume threshold, then continued with SIGCONT.
 """
 
 import argparse
+import os
 import signal
 import subprocess
 import sys
@@ -46,6 +47,51 @@ def read_temps(devices: dict[str, Path]) -> dict[str, float]:
         except OSError:
             pass
     return temps
+
+
+def rsync_pids(root: int) -> tuple[int, ...]:
+    """Return the PIDs of root and every rsync process descended from it.
+
+    rsync forks into sender/generator/receiver processes, and the one writing
+    to disk is often a child, so pausing must reach the whole tree. The remote
+    shell (e.g. ssh) is left running so the connection survives long pauses;
+    it stalls on its own once rsync stops reading and writing.
+    """
+    children: dict[int, list[int]] = {}
+    names: dict[int, str] = {}
+    for stat in Path("/proc").glob("[0-9]*/stat"):
+        try:
+            # comm (field 2) may contain spaces or parens, so split on the last ')'.
+            head, _, tail = stat.read_text().rpartition(")")
+            ppid = int(tail.split()[1])
+        except (OSError, IndexError, ValueError):
+            continue
+        pid = int(stat.parent.name)
+        names[pid] = head.partition("(")[2]
+        children.setdefault(ppid, []).append(pid)
+
+    def walk(pid: int) -> tuple[int, ...]:
+        return (pid,) + tuple(d for c in children.get(pid, ()) for d in walk(c))
+
+    return (root,) + tuple(pid for pid in walk(root)[1:] if names.get(pid) == "rsync")
+
+
+def signal_pids(pids: tuple[int, ...], sig: signal.Signals) -> None:
+    for pid in pids:
+        try:
+            os.kill(pid, sig)
+        except OSError:  # exited, or PID reused by another user's process
+            pass
+
+
+def stop_rsync_tree(root: int) -> tuple[int, ...]:
+    """SIGSTOP root's rsync tree, re-scanning until no unstopped rsync remains
+    (a child may fork between the /proc scan and the signal)."""
+    stopped: tuple[int, ...] = ()
+    while new := tuple(p for p in rsync_pids(root) if p not in stopped):
+        signal_pids(new, signal.SIGSTOP)
+        stopped += new
+    return stopped
 
 
 def format_temp_line(temps: dict[str, float], pause_temp: float) -> str:
@@ -100,12 +146,13 @@ def main() -> None:
     print()
 
     proc = subprocess.Popen(cmd)
-    paused = False
+    # PIDs frozen with SIGSTOP; empty while rsync is running. Remembering the
+    # exact set lets us resume children even if the tree changes meanwhile.
+    stopped: tuple[int, ...] = ()
 
     def cleanup(signum, frame):
         print("\n[thrsync] Interrupted — terminating rsync.")
-        if paused:
-            proc.send_signal(signal.SIGCONT)
+        signal_pids(stopped, signal.SIGCONT)
         proc.terminate()
         try:
             proc.wait(timeout=5)
@@ -127,22 +174,20 @@ def main() -> None:
         temp_str = format_temp_line(temps, args.pause_temp)
         ts = time.strftime("%H:%M:%S")
 
-        if not paused and max_temp >= args.pause_temp:
+        if not stopped and max_temp >= args.pause_temp:
             print(f"\n[thrsync] {ts} PAUSING — {temp_str}")
-            proc.send_signal(signal.SIGSTOP)
-            paused = True
+            stopped = stop_rsync_tree(proc.pid)
 
-        elif paused and max_temp <= args.resume_temp:
+        elif stopped and max_temp <= args.resume_temp:
             print(f"\n[thrsync] {ts} RESUMING — {temp_str}")
-            proc.send_signal(signal.SIGCONT)
-            paused = False
+            signal_pids(stopped, signal.SIGCONT)
+            stopped = ()
 
         else:
-            state = "PAUSED" if paused else "running"
+            state = "PAUSED" if stopped else "running"
             print(f"\n[thrsync] {ts} [{state}]  {temp_str}")
 
-    if paused:
-        proc.send_signal(signal.SIGCONT)
+    signal_pids(stopped, signal.SIGCONT)
 
     exit_code = proc.wait()
     if exit_code == 0:
